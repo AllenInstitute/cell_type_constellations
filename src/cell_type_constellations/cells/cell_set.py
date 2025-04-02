@@ -37,6 +37,11 @@ class CellSet(object):
             "leaf level" of the taxonomy
         """
 
+        if discrete_fields is None:
+            discrete_fields = []
+        if continuous_fields is None:
+            continuous_fields = []
+
         # infer child-to-parent relationships, i.e. relationships
         # between discrete_fields where the value in one (the child)
         # necessarily implies the value in another (the parent)
