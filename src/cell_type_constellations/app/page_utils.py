@@ -17,7 +17,8 @@ def get_constellation_plot_page(
         hull_level,
         connection_coords,
         color_by,
-        fill_hulls):
+        fill_hulls,
+        render_metadata=True):
 
     if hull_level == 'NA':
         hull_level = None
@@ -94,20 +95,21 @@ def get_constellation_plot_page(
         </p>
         """
 
-    taxonomy_name = get_taxonomy_name(hdf5_path)
+    if render_metadata:
+        taxonomy_name = get_taxonomy_name(hdf5_path)
 
-    html += get_constellation_control_code(
-        taxonomy_name=taxonomy_name,
-        centroid_level=centroid_level,
-        color_by=color_by,
-        show_centroid_labels=show_centroid_labels,
-        hull_level=hull_level,
-        connection_coords=connection_coords,
-        fill_hulls=fill_hulls,
-        discrete_field_list=discrete_field_list,
-        continuous_field_list=continuous_field_list,
-        hull_level_list=hull_level_list,
-        connection_coords_list=connection_coords_list)
+        html += get_constellation_control_code(
+            taxonomy_name=taxonomy_name,
+            centroid_level=centroid_level,
+            color_by=color_by,
+            show_centroid_labels=show_centroid_labels,
+            hull_level=hull_level,
+            connection_coords=connection_coords,
+            fill_hulls=fill_hulls,
+            discrete_field_list=discrete_field_list,
+            continuous_field_list=continuous_field_list,
+            hull_level_list=hull_level_list,
+            connection_coords_list=connection_coords_list)
 
     return html
 
