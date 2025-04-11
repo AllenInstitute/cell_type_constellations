@@ -540,7 +540,7 @@ def get_bezier_control_points(
         background[i_conn*2, :] = conn.src.center_pt
         background[1+i_conn*2, :] = conn.dst.center_pt
         charges[i_conn*2] = 5.0
-        charges[i_conn*2] = 5.0
+        charges[1+i_conn*2] = 5.0
 
         background[2*n_conn+i_conn, :] = 0.5*(conn.src.center_pt
                                               + conn.dst.center_pt)
