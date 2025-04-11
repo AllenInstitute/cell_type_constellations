@@ -107,13 +107,13 @@ def get_connection_list(
         )
         connection_list.append(conn)
 
+    bezier_control_points = get_bezier_control_points(
+        connection_list=connection_list)
+
     for conn in connection_list:
         conn.set_rendering_corners(
             max_connection_ratio=max_ratio
         )
-
-    bezier_control_points = get_bezier_control_points(
-        connection_list=connection_list)
 
     for ii, bez in enumerate(bezier_control_points):
         connection_list[ii].set_bezier_control_points(bez)
