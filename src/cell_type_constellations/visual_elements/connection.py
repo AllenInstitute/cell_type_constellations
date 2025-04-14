@@ -548,8 +548,7 @@ def get_bezier_control_points(
     """
     end_charge = 5.0
     mid_charge = 1.0
-    self_end_charge = -2.0
-
+    self_end_charge = -5.0
 
     n_conn = len(connection_list)
     background = np.zeros((3*n_conn, 2), dtype=float)
