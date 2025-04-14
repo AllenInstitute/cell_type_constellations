@@ -110,13 +110,16 @@ def get_connection_list(
     bezier_control_points = get_bezier_control_points(
         connection_list=connection_list)
 
+    for conn, bez in zip(connection_list, bezier_control_points):
+        conn.thermal_control_point = bez
+
     for conn in connection_list:
         conn.set_rendering_corners(
             max_connection_ratio=max_ratio
         )
 
-    for ii, bez in enumerate(bezier_control_points):
-        connection_list[ii].set_bezier_control_points(bez)
+    for conn in connection_list:
+        conn.set_bezier_control_points()
 
     return connection_list
 
@@ -298,6 +301,7 @@ class Connection(object):
         self._rendering_corners = None
         self._bezier_control_points = None
         self._k_nn = k_nn
+        self._thermal_control_point = None
 
     def to_pixel_space_connection(self):
         if not self.ready_to_render:
@@ -391,6 +395,16 @@ class Connection(object):
         return self._rendering_corners
 
     @property
+    def thermal_control_point(self):
+        return self._thermal_control_point
+
+    @thermal_control_point.setter
+    def thermal_control_point(self, value):
+        assert self._thermal_control_point is None
+        assert not hasattr(self, '_src_mid')
+        self._thermal_control_point = value
+
+    @property
     def bezier_control_points(self):
         """
         The control points for the Bezier curves
@@ -423,12 +437,13 @@ class Connection(object):
         src_pt = self.src.center_pt
         dst_pt = self.dst.center_pt
 
-        connection = dst_pt-src_pt
-
+        connection = dst_pt-self.thermal_control_point
         norm = np.sqrt((connection**2).sum())
-
-        self._src_mid = self.src.radius*connection/norm
         self._dst_mid = -self.dst.radius*connection/norm
+
+        connection = self.thermal_control_point-src_pt
+        norm = np.sqrt((connection**2).sum())
+        self._src_mid = self.src.radius*connection/norm
 
     def set_rendering_corners(self, max_connection_ratio):
         """
@@ -459,13 +474,14 @@ class Connection(object):
                                        [points[2], points[3]]):
             print(f'huh {self.src.label} {self.dst.label}')
 
-    def set_bezier_control_points(self, thermal_control):
+    def set_bezier_control_points(self):
         """
         Thermal control is the result of the get_bezier_control_points
         function run on all the connections in the field of view
         """
+        thermal_control = self.thermal_control_point
         assert self.rendering_corners is not None
-        mid_pt = 0.5*(self.src.center_pt+self.dst.center_pt)
+        mid_pt = 0.5*(self.src.center_pt+self.src_mid+self.dst.center_pt+self.dst_mid)
         dd = thermal_control-mid_pt
         ctrl0 = dd+0.5*(self.rendering_corners[0]+self.rendering_corners[1])
         ctrl1 = dd+0.5*(self.rendering_corners[2]+self.rendering_corners[3])
