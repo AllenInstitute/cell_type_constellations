@@ -530,6 +530,10 @@ def get_bezier_control_points(
     needs to transform these into the two control points, one for the "upper"
     edge, one for the "lower" edge).
     """
+    end_charge = 5.0
+    mid_charge = 1.0
+    self_end_charge = -2.0
+
 
     n_conn = len(connection_list)
     background = np.zeros((3*n_conn, 2), dtype=float)
@@ -539,12 +543,12 @@ def get_bezier_control_points(
     for i_conn, conn in enumerate(connection_list):
         background[i_conn*2, :] = conn.src.center_pt
         background[1+i_conn*2, :] = conn.dst.center_pt
-        charges[i_conn*2] = 5.0
-        charges[1+i_conn*2] = 5.0
+        charges[i_conn*2] = end_charge
+        charges[1+i_conn*2] = end_charge
 
         background[2*n_conn+i_conn, :] = 0.5*(conn.src.center_pt
                                               + conn.dst.center_pt)
-        charges[2*n_conn+i_conn] = 1.0
+        charges[2*n_conn+i_conn] = mid_charge
 
         dd = conn.dst.center_pt-conn.src.center_pt
         distances[i_conn] = np.sqrt(
@@ -553,37 +557,50 @@ def get_bezier_control_points(
         dd = dd/distances[i_conn]
         orthogonals[i_conn, :] = geometry_utils.rot(dd, 0.5*np.pi)
 
-    max_displacement = 0.05
-    n_iter = 3
+    max_acc = 1.0
+    n_iter = 10
     mask = np.ones(3*n_conn, dtype=bool)
     n_tot = 0
     n_adj = 0
+
+    speed = np.zeros(n_conn, dtype=float)
+    functional_charges = np.copy(charges)
+
     for i_iter in range(n_iter):
         for i_conn in range(n_conn):
             mask[2*n_conn+i_conn] = False
-            mask[i_conn*2] = False
-            mask[1+i_conn*2] = False
+            functional_charges[i_conn*2] = self_end_charge
+            functional_charges[1+i_conn*2] = self_end_charge
+            #mask[i_conn*2] = False
+            #mask[1+i_conn*2] = False
+
             test_pt = background[2*n_conn+i_conn, :]
             force = compute_force(
                 test_pt=test_pt,
                 background_points=background[mask, :],
-                charges=charges[mask]
+                charges=functional_charges[mask]
             )
             ortho_force = np.dot(force, orthogonals[i_conn, :])
-            force = 100.0*ortho_force*orthogonals[i_conn, :]
+            acc = np.sqrt((ortho_force**2).sum())
+            if acc > max_acc:
+                ortho_force *= max_acc/acc
 
-            displacement = np.sqrt((force**2).sum())
-            if displacement > max_displacement*distances[i_conn]:
-                force = max_displacement*distances[i_conn]*force/displacement
-                n_adj += 1
+            speed[i_conn] += ortho_force
+            displacement_vector = speed[i_conn]*orthogonals[i_conn, :]
+            displacement = np.sqrt((displacement_vector**2).sum())
 
-            background[2*n_conn+i_conn, :] = test_pt + force
+            background[2*n_conn+i_conn, :] = test_pt + displacement_vector
             mask[2*n_conn+i_conn] = True
-            mask[i_conn*2] = True
-            mask[1+2*i_conn] = True
+
+            #mask[i_conn*2] = True
+            #mask[1+2*i_conn] = True
+            functional_charges[i_conn*2] = end_charge
+            functional_charges[1+i_conn*2] = end_charge
+
             if displacement > 1.0e-3:
                 n_tot += 1
 
+        print(f"    {n_tot} pts displaced")
     return background[2*n_conn:, :]
 
 
