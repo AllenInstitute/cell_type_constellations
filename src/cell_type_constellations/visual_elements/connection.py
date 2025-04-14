@@ -555,6 +555,33 @@ def get_bezier_control_points(
     orthogonals = np.zeros((n_conn, 2), dtype=float)
     distances = np.zeros(n_conn, dtype=float)
     charges = np.zeros(3*n_conn, dtype=float)
+
+    # if shared_src[ii][jj] is True, conn[ii] overlaps conn[jj] src
+    shared_src = np.zeros((len(connection_list), len(connection_list)), dtype=bool)
+
+    # if shared_dst[ii][jj] is True, conn[ii] overlaps conn[jj] dst
+    shared_dst = np.zeros((len(connection_list), len(connection_list)), dtype=bool)
+    for i0 in range(len(connection_list)):
+        c0 = connection_list[i0]
+        for i1 in range(i0+1, len(connection_list), 1):
+            c1 = connection_list[i1]
+            if c1.src is c0.dst:
+                shared_src[i0][i1] = True
+                shared_dst[i1][i0] = True
+            elif c1.src is c0.src:
+                shared_src[i0][i1] = True
+                shared_src[i1][i0] = True
+
+            if c1.dst is c0.src:
+                shared_dst[i0][i1] = True
+                shared_src[i1][i0] = True
+            elif c1.dst is c0.dst:
+                shared_dst[i0][i1] = True
+                shared_dst[i1][i0] = True
+
+    assert shared_dst.sum() > 0 and shared_dst.sum() < shared_dst.size
+    assert shared_src.sum() >0 and shared_dst.sum() < shared_dst.size
+
     for i_conn, conn in enumerate(connection_list):
         background[i_conn*2, :] = conn.src.center_pt
         background[1+i_conn*2, :] = conn.dst.center_pt
@@ -583,11 +610,16 @@ def get_bezier_control_points(
 
     for i_iter in range(n_iter):
         for i_conn in range(n_conn):
+            mask[:] = True
+
             mask[2*n_conn+i_conn] = False
+            shared_src_idx = np.where(shared_src[i_conn, :])[0]
+            mask[2*shared_src_idx] = False
+            shared_dst_idx = np.where(shared_dst[i_conn, :])[0]
+            mask[1+2*shared_dst_idx] = False
+
             functional_charges[i_conn*2] = self_end_charge
             functional_charges[1+i_conn*2] = self_end_charge
-            #mask[i_conn*2] = False
-            #mask[1+i_conn*2] = False
 
             test_pt = background[2*n_conn+i_conn, :]
             force = compute_force(
@@ -605,10 +637,7 @@ def get_bezier_control_points(
             displacement = np.sqrt((displacement_vector**2).sum())
 
             background[2*n_conn+i_conn, :] = test_pt + displacement_vector
-            mask[2*n_conn+i_conn] = True
 
-            #mask[i_conn*2] = True
-            #mask[1+2*i_conn] = True
             functional_charges[i_conn*2] = end_charge
             functional_charges[1+i_conn*2] = end_charge
 
