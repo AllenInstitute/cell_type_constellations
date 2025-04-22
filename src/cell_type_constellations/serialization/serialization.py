@@ -187,6 +187,11 @@ def _serialize_from_h5ad(
                 f"{dst_path} exists; run with clobber=True to overwrite"
             )
 
+    visualization_coord_array = coord_utils.get_coords_from_h5ad(
+        h5ad_path=h5ad_path,
+        coord_key=visualization_coords
+    )
+
     cell_set = CellSet.from_h5ad(
         h5ad_path=h5ad_path,
         discrete_fields=discrete_fields,
@@ -221,11 +226,6 @@ def _serialize_from_h5ad(
         min_radius=min_radius
     )
 
-    visualization_coord_array = coord_utils.get_coords_from_h5ad(
-        h5ad_path=h5ad_path,
-        coord_key=visualization_coords
-    )
-
     connection_coords_to_mm_path = dict()
 
     for connection_coords in connection_coords_list:
@@ -247,7 +247,9 @@ def _serialize_from_h5ad(
             chunk_size=1000000
         )
 
-        connection_coords_to_mm_path[connection_coords] = mixture_matrix_path
+        connection_coords_to_mm_path[connection_coords] = (
+            mixture_matrix_path
+        )
 
     print('=======CREATING CENTROIDS=======')
 
@@ -257,18 +259,11 @@ def _serialize_from_h5ad(
         coord_key=visualization_coords
     )
 
-    centroid_lookup = (
-        centroid.pixel_centroid_lookup_from_embedding_centroid_lookup(
-            embedding_lookup=embedding_lookup,
-            fov=fov
-        )
-    )
-
     serialize_data(
         cell_set=cell_set,
         fov=fov,
         discrete_color_map=discrete_color_map,
-        centroid_lookup=centroid_lookup,
+        embedding_centroid_lookup=embedding_lookup,
         visualization_coord_array=visualization_coord_array,
         connection_coords_to_mm_path=connection_coords_to_mm_path,
         dst_path=dst_path,
@@ -281,7 +276,7 @@ def serialize_data(
         cell_set,
         fov,
         discrete_color_map,
-        centroid_lookup,
+        embedding_centroid_lookup,
         visualization_coord_array,
         connection_coords_to_mm_path,
         dst_path,
@@ -296,8 +291,8 @@ def serialize_data(
         a FieldOfView
     discrete_color_map:
         dict mapping [type_field][type_value] -> color hex
-    centroid_lookup:
-        dict mapping [type_field][type_value] -> PixelSpaceCentroids
+    embedding_centroid_lookup:
+        dict mapping [type_field][type_value] -> EmbeddingSpaceCentroids
     visualization_coord_array:
         (n_cells, 2) array of embedding coords for visualization
     connection_coords_to_mm_path:
@@ -309,6 +304,12 @@ def serialize_data(
     tmp_dir:
         directory where scratch files can be written
     """
+    centroid_lookup = (
+        centroid.pixel_centroid_lookup_from_embedding_centroid_lookup(
+            embedding_lookup=embedding_centroid_lookup,
+            fov=fov
+        )
+    )
 
     discrete_fields = cell_set.type_field_list()
     continuous_fields = cell_set.continuous_field_list()
