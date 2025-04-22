@@ -249,11 +249,19 @@ def _serialize_from_h5ad(
 
         connection_coords_to_mm_path[connection_coords] = mixture_matrix_path
 
-    centroid_lookup = centroid.pixel_centroid_lookup_from_h5ad(
-        h5ad_path=h5ad_path,
+    print('=======CREATING CENTROIDS=======')
+
+    embedding_lookup = centroid.embedding_centroid_lookup_from_h5ad(
         cell_set=cell_set,
-        coord_key=visualization_coords,
-        fov=fov
+        h5ad_path=h5ad_path,
+        coord_key=visualization_coords
+    )
+
+    centroid_lookup = (
+        centroid.pixel_centroid_lookup_from_embedding_centroid_lookup(
+            embedding_lookup=embedding_lookup,
+            fov=fov
+        )
     )
 
     serialize_data(

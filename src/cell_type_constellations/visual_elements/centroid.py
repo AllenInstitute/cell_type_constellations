@@ -61,8 +61,6 @@ def pixel_centroid_lookup_from_h5ad(
         coord_key=coord_key
     )
 
-    print('=======CREATED EMBEDDING SPACE CENTROIDS=======')
-
     pixel_lookup = pixel_centroid_lookup_from_embedding_centroid_lookup(
         embedding_lookup=embedding_lookup,
         fov=fov
@@ -112,7 +110,7 @@ def pixel_centroid_lookup_from_embedding_centroid_lookup(
                 )
             )
 
-    print('=======SUCCESSFULLY CREATED CENTROIDS=======')
+    print('=======CREATED PIXEL SPACE CENTROIDS=======')
     return pixel_lookup
 
 
@@ -166,6 +164,9 @@ def embedding_centroid_lookup_from_h5ad(
                     type_value=type_value
                 )
             )
+
+    print('=======CREATED EMBEDDING SPACE CENTROIDS=======')
+
     return centroid_lookup
 
 
