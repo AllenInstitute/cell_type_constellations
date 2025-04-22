@@ -1,12 +1,13 @@
 import numpy as np
 
-from cell_type_constellations.utils.geometry import (
+from cell_type_constellations.utils.geometry_utils import (
     do_intersect,
     _do_overlap,
     cross_product_2d_bulk,
     cross_product_2d,
     find_intersection_pt
 )
+
 
 def test_do_overlap():
     assert _do_overlap(0.5, 1.0, 0.75, 2.0)
@@ -56,7 +57,7 @@ def test_cross_product_bulk():
         [1.1, 2.2],
         [3.1, 4.2]
     ])
-    assert vec0.shape==(3,2)
+    assert vec0.shape == (3, 2)
 
     vec1 = np.array([
         [-0.1, 0.9],
