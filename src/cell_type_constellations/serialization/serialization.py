@@ -226,6 +226,76 @@ def _serialize_from_h5ad(
         min_radius=min_radius
     )
 
+    (embedding_lookup,
+     connection_coords_to_mm_path) = get_raw_connection_data(
+         cell_set=cell_set,
+         h5ad_path=h5ad_path,
+         visualization_coords=visualization_coords,
+         connection_coords_list=connection_coords_list,
+         k_nn=k_nn,
+         n_processors=n_processors,
+         tmp_dir=tmp_dir
+     )
+
+    serialize_data(
+        cell_set=cell_set,
+        fov=fov,
+        discrete_color_map=discrete_color_map,
+        embedding_centroid_lookup=embedding_lookup,
+        visualization_coord_array=visualization_coord_array,
+        connection_coords_to_mm_path=connection_coords_to_mm_path,
+        dst_path=dst_path,
+        n_processors=n_processors,
+        tmp_dir=tmp_dir
+    )
+
+
+def get_raw_connection_data(
+        h5ad_path,
+        cell_set,
+        visualization_coords,
+        connection_coords_list,
+        k_nn,
+        n_processors,
+        tmp_dir):
+    """
+    Create the embedding space centroids and mixture matrices
+    for a constellation plot.
+
+    Parameters
+    ----------
+    h5ad_path:
+        path to the h5ad file
+    cell_set:
+        the CellSet defining the cells in the constellation plot
+    visualization_coords:
+        a str. The key in obsm where the 2D embedding coordinates
+        used for the visualization of the data will be
+    connection_coords_list:
+        a list of str. Each one is a key in obsm pointing to
+        embedding coordinates which will be used to assess whether or
+        not two nodes in the constellation plot are connected (can
+        be more than 2D, but greater than 2D embeddings can take
+        ~ an hour to process)
+    k_nn:
+        an int. The number of nearest neighbors to find for each
+        cell when assessing the connectedness of nodes in the
+        constellation plot
+    n_processors:
+        a int. The number of independent worker processes to spin
+        up at a time.
+    tmp_dir:
+        path to a directory where scratch files may be written
+
+    Returns
+    -------
+    embedding_lookup:
+        lookup table of embedding space centroids
+    centroid_coords_to_mm_path:
+        lookup table mapping name of connection coords
+        to the path to the HDF5 file where the mixture matrix
+        for that coordinate system is stored
+    """
     connection_coords_to_mm_path = dict()
 
     for connection_coords in connection_coords_list:
@@ -251,25 +321,13 @@ def _serialize_from_h5ad(
             mixture_matrix_path
         )
 
-    print('=======CREATING CENTROIDS=======')
-
     embedding_lookup = centroid.embedding_centroid_lookup_from_h5ad(
         cell_set=cell_set,
         h5ad_path=h5ad_path,
         coord_key=visualization_coords
     )
 
-    serialize_data(
-        cell_set=cell_set,
-        fov=fov,
-        discrete_color_map=discrete_color_map,
-        embedding_centroid_lookup=embedding_lookup,
-        visualization_coord_array=visualization_coord_array,
-        connection_coords_to_mm_path=connection_coords_to_mm_path,
-        dst_path=dst_path,
-        n_processors=n_processors,
-        tmp_dir=tmp_dir
-    )
+    return embedding_lookup, connection_coords_to_mm_path
 
 
 def serialize_data(
