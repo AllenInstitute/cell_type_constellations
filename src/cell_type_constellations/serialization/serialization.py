@@ -6,6 +6,8 @@ interactive constellation plot to an HDF5 file
 import h5py
 import json
 import matplotlib
+import numpy as np
+import pandas as pd
 import pathlib
 import tempfile
 
@@ -453,3 +455,108 @@ def _validate_discrete_color_map(color_map, cell_set):
     for pair in missing_pairs:
         msg += f"{pair}\n"
     raise RuntimeError(msg)
+
+
+def serialize_graph(
+        centroid_lookup,
+        mm_path_lookup,
+        node_path,
+        edge_path):
+    """
+    Write a graph (in embedding coordinates) to disk.
+
+    Parameters
+    ----------
+    centroid_lookup:
+        dict mapping [level][node] to an EmbeddingSpaceCentroid
+    mm_path_lookup:
+        dict mapping connection coordintate name to a path
+        to an HDF5 file containing the mixture matrix
+    node_path:
+        path to the CSV file where node information will be written
+    edge_path:
+        path to the CSV file where edge information will be written
+    """
+
+    _serialize_nodes(
+        centroid_lookup=centroid_lookup,
+        dst_path=node_path)
+
+    _serialize_edges(
+        hierarchy=list(centroid_lookup.keys()),
+        mm_path_lookup=mm_path_lookup,
+        dst_path=edge_path
+    )
+
+
+def _serialize_nodes(centroid_lookup, dst_path):
+    node_data = []
+    for level in centroid_lookup:
+        for node in centroid_lookup[level]:
+            centroid = centroid_lookup[level][node]
+            node_data.append(
+                {"level": level,
+                 "node": node,
+                 "x": centroid.x,
+                 "y": centroid.y,
+                 "n_cells": centroid.n_cells
+                 }
+            )
+    pd.DataFrame(node_data).to_csv(dst_path, index=False)
+
+
+def _serialize_edges(
+        hierarchy,
+        mm_path_lookup,
+        dst_path):
+    """
+    weight means N of src_node's neighbors pointed to dst_node
+    """
+
+    initialized = False
+    coord_set_list = list(mm_path_lookup.keys())
+    wgt_key_list = []
+    for level in hierarchy:
+        dataset = dict()
+        for coord_set in coord_set_list:
+            wgt_key = f'{coord_set}_wgt'
+            if level == hierarchy[0]:
+                wgt_key_list.append(wgt_key)
+
+            with h5py.File(mm_path_lookup[coord_set], 'r') as src:
+                grp = src[level]
+                idx_to_label = [
+                    v.decode('utf-8') for v in grp['row_key'][()]
+                ]
+                mm = grp['mixture_matrix'][()]
+
+            nonzero = np.where(mm > 0)
+            for i0, i1 in zip(nonzero[0], nonzero[1]):
+                if i0 == i1:
+                    continue
+                key = (level, i0, i1)
+                if key not in dataset:
+                    dataset[key] = {
+                        'level': level,
+                        'src_node': idx_to_label[i0],
+                        'dst_node': idx_to_label[i1]
+                    }
+                dataset[key][wgt_key] = mm[i0, i1]
+
+        df = pd.DataFrame(dataset.values())
+        df = df[
+            ['level', 'src_node', 'dst_node'] + wgt_key_list
+        ]
+        if initialized:
+            header = False
+            mode = 'a'
+        else:
+            header = True
+            initialized = True
+            mode = 'w'
+
+        df.to_csv(
+            dst_path,
+            mode=mode,
+            header=header,
+            index=False)
