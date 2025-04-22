@@ -63,6 +63,33 @@ def pixel_centroid_lookup_from_h5ad(
 
     print('=======CREATED EMBEDDING SPACE CENTROIDS=======')
 
+    pixel_lookup = pixel_centroid_lookup_from_embedding_centroid_lookup(
+        embedding_lookup=embedding_lookup,
+        fov=fov
+    )
+
+    return pixel_lookup
+
+
+def pixel_centroid_lookup_from_embedding_centroid_lookup(
+        embedding_lookup,
+        fov):
+    """
+    Convert an embedding space pixel lookup to a pixel space
+    centroid lookup
+
+    Parameters
+    ----------
+    embedding_lookup:
+        lookup table of EmbeddingSpaceCentroids
+    fov:
+        FieldOfView
+
+    Returns
+    -------
+    lookup table of PixelSpaceCentroids
+    """
+
     n_cells_max = None
     for type_field in embedding_lookup:
         n = max(
