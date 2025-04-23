@@ -4,7 +4,7 @@ import pathlib
 
 import cell_type_constellations
 
-import cell_type_constellations.app.page_utils as page_utils
+import cell_type_constellations.rendering.rendering_api as rendering_api
 
 
 def main():
@@ -46,7 +46,7 @@ class Visualizer(object):
             )
 
         self.constellation_plot_config = (
-            page_utils.get_constellation_plot_config(
+            rendering_api.get_constellation_plot_config(
                 self.data_dir
             )
         )
@@ -97,7 +97,7 @@ class Visualizer(object):
             hull_level = config['hull_level']
             connection_coords = config['connection_coords']
 
-        html = page_utils.get_constellation_plot_page(
+        html = rendering_api.constellation_svg_from_hdf5(
                 hdf5_path=hdf5_path,
                 centroid_level=centroid_level,
                 hull_level=hull_level,

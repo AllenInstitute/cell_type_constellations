@@ -10,7 +10,7 @@ import cell_type_constellations.visual_elements.fov as fov_utils
 import cell_type_constellations.rendering.rendering_utils as rendering_utils
 
 
-def get_constellation_plot_page(
+def constellation_svg_from_hdf5(
         hdf5_path,
         centroid_level,
         show_centroid_labels,
