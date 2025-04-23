@@ -6,6 +6,8 @@ interactive constellation plot to an HDF5 file
 import h5py
 import json
 import matplotlib
+import numpy as np
+import pandas as pd
 import pathlib
 import tempfile
 
@@ -187,6 +189,11 @@ def _serialize_from_h5ad(
                 f"{dst_path} exists; run with clobber=True to overwrite"
             )
 
+    visualization_coord_array = coord_utils.get_coords_from_h5ad(
+        h5ad_path=h5ad_path,
+        coord_key=visualization_coords
+    )
+
     cell_set = CellSet.from_h5ad(
         h5ad_path=h5ad_path,
         discrete_fields=discrete_fields,
@@ -221,11 +228,76 @@ def _serialize_from_h5ad(
         min_radius=min_radius
     )
 
-    visualization_coord_array = coord_utils.get_coords_from_h5ad(
-        h5ad_path=h5ad_path,
-        coord_key=visualization_coords
+    (embedding_lookup,
+     connection_coords_to_mm_path) = get_raw_connection_data(
+         cell_set=cell_set,
+         h5ad_path=h5ad_path,
+         visualization_coords=visualization_coords,
+         connection_coords_list=connection_coords_list,
+         k_nn=k_nn,
+         n_processors=n_processors,
+         tmp_dir=tmp_dir
+     )
+
+    serialize_data(
+        cell_set=cell_set,
+        fov=fov,
+        discrete_color_map=discrete_color_map,
+        embedding_centroid_lookup=embedding_lookup,
+        visualization_coord_array=visualization_coord_array,
+        connection_coords_to_mm_path=connection_coords_to_mm_path,
+        dst_path=dst_path,
+        n_processors=n_processors,
+        tmp_dir=tmp_dir
     )
 
+
+def get_raw_connection_data(
+        h5ad_path,
+        cell_set,
+        visualization_coords,
+        connection_coords_list,
+        k_nn,
+        n_processors,
+        tmp_dir):
+    """
+    Create the embedding space centroids and mixture matrices
+    for a constellation plot.
+
+    Parameters
+    ----------
+    h5ad_path:
+        path to the h5ad file
+    cell_set:
+        the CellSet defining the cells in the constellation plot
+    visualization_coords:
+        a str. The key in obsm where the 2D embedding coordinates
+        used for the visualization of the data will be
+    connection_coords_list:
+        a list of str. Each one is a key in obsm pointing to
+        embedding coordinates which will be used to assess whether or
+        not two nodes in the constellation plot are connected (can
+        be more than 2D, but greater than 2D embeddings can take
+        ~ an hour to process)
+    k_nn:
+        an int. The number of nearest neighbors to find for each
+        cell when assessing the connectedness of nodes in the
+        constellation plot
+    n_processors:
+        a int. The number of independent worker processes to spin
+        up at a time.
+    tmp_dir:
+        path to a directory where scratch files may be written
+
+    Returns
+    -------
+    embedding_lookup:
+        lookup table of embedding space centroids
+    centroid_coords_to_mm_path:
+        lookup table mapping name of connection coords
+        to the path to the HDF5 file where the mixture matrix
+        for that coordinate system is stored
+    """
     connection_coords_to_mm_path = dict()
 
     for connection_coords in connection_coords_list:
@@ -247,33 +319,24 @@ def _serialize_from_h5ad(
             chunk_size=1000000
         )
 
-        connection_coords_to_mm_path[connection_coords] = mixture_matrix_path
+        connection_coords_to_mm_path[connection_coords] = (
+            mixture_matrix_path
+        )
 
-    centroid_lookup = centroid.pixel_centroid_lookup_from_h5ad(
+    embedding_lookup = centroid.embedding_centroid_lookup_from_h5ad(
+        cell_set=cell_set,
         h5ad_path=h5ad_path,
-        cell_set=cell_set,
-        coord_key=visualization_coords,
-        fov=fov
+        coord_key=visualization_coords
     )
 
-    serialize_data(
-        cell_set=cell_set,
-        fov=fov,
-        discrete_color_map=discrete_color_map,
-        centroid_lookup=centroid_lookup,
-        visualization_coord_array=visualization_coord_array,
-        connection_coords_to_mm_path=connection_coords_to_mm_path,
-        dst_path=dst_path,
-        n_processors=n_processors,
-        tmp_dir=tmp_dir
-    )
+    return embedding_lookup, connection_coords_to_mm_path
 
 
 def serialize_data(
         cell_set,
         fov,
         discrete_color_map,
-        centroid_lookup,
+        embedding_centroid_lookup,
         visualization_coord_array,
         connection_coords_to_mm_path,
         dst_path,
@@ -288,8 +351,8 @@ def serialize_data(
         a FieldOfView
     discrete_color_map:
         dict mapping [type_field][type_value] -> color hex
-    centroid_lookup:
-        dict mapping [type_field][type_value] -> PixelSpaceCentroids
+    embedding_centroid_lookup:
+        dict mapping [type_field][type_value] -> EmbeddingSpaceCentroids
     visualization_coord_array:
         (n_cells, 2) array of embedding coords for visualization
     connection_coords_to_mm_path:
@@ -301,6 +364,12 @@ def serialize_data(
     tmp_dir:
         directory where scratch files can be written
     """
+    centroid_lookup = (
+        centroid.pixel_centroid_lookup_from_embedding_centroid_lookup(
+            embedding_lookup=embedding_centroid_lookup,
+            fov=fov
+        )
+    )
 
     discrete_fields = cell_set.type_field_list()
     continuous_fields = cell_set.continuous_field_list()
@@ -386,3 +455,108 @@ def _validate_discrete_color_map(color_map, cell_set):
     for pair in missing_pairs:
         msg += f"{pair}\n"
     raise RuntimeError(msg)
+
+
+def serialize_graph(
+        centroid_lookup,
+        mm_path_lookup,
+        node_path,
+        edge_path):
+    """
+    Write a graph (in embedding coordinates) to disk.
+
+    Parameters
+    ----------
+    centroid_lookup:
+        dict mapping [level][node] to an EmbeddingSpaceCentroid
+    mm_path_lookup:
+        dict mapping connection coordintate name to a path
+        to an HDF5 file containing the mixture matrix
+    node_path:
+        path to the CSV file where node information will be written
+    edge_path:
+        path to the CSV file where edge information will be written
+    """
+
+    _serialize_nodes(
+        centroid_lookup=centroid_lookup,
+        dst_path=node_path)
+
+    _serialize_edges(
+        hierarchy=list(centroid_lookup.keys()),
+        mm_path_lookup=mm_path_lookup,
+        dst_path=edge_path
+    )
+
+
+def _serialize_nodes(centroid_lookup, dst_path):
+    node_data = []
+    for level in centroid_lookup:
+        for node in centroid_lookup[level]:
+            centroid = centroid_lookup[level][node]
+            node_data.append(
+                {"level": level,
+                 "node": node,
+                 "x": centroid.x,
+                 "y": centroid.y,
+                 "n_cells": centroid.n_cells
+                 }
+            )
+    pd.DataFrame(node_data).to_csv(dst_path, index=False)
+
+
+def _serialize_edges(
+        hierarchy,
+        mm_path_lookup,
+        dst_path):
+    """
+    weight means N of src_node's neighbors pointed to dst_node
+    """
+
+    initialized = False
+    coord_set_list = list(mm_path_lookup.keys())
+    wgt_key_list = []
+    for level in hierarchy:
+        dataset = dict()
+        for coord_set in coord_set_list:
+            wgt_key = f'{coord_set}_wgt'
+            if level == hierarchy[0]:
+                wgt_key_list.append(wgt_key)
+
+            with h5py.File(mm_path_lookup[coord_set], 'r') as src:
+                grp = src[level]
+                idx_to_label = [
+                    v.decode('utf-8') for v in grp['row_key'][()]
+                ]
+                mm = grp['mixture_matrix'][()]
+
+            nonzero = np.where(mm > 0)
+            for i0, i1 in zip(nonzero[0], nonzero[1]):
+                if i0 == i1:
+                    continue
+                key = (level, i0, i1)
+                if key not in dataset:
+                    dataset[key] = {
+                        'level': level,
+                        'src_node': idx_to_label[i0],
+                        'dst_node': idx_to_label[i1]
+                    }
+                dataset[key][wgt_key] = mm[i0, i1]
+
+        df = pd.DataFrame(dataset.values())
+        df = df[
+            ['level', 'src_node', 'dst_node'] + wgt_key_list
+        ]
+        if initialized:
+            header = False
+            mode = 'a'
+        else:
+            header = True
+            initialized = True
+            mode = 'w'
+
+        df.to_csv(
+            dst_path,
+            mode=mode,
+            header=header,
+            index=False)

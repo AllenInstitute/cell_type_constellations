@@ -45,6 +45,7 @@ class FieldOfView(object):
         self._min_radius = min_radius
 
         self._embedding_to_pixel = embedding_to_pixel
+        self._pixel_to_embedding = np.linalg.inv(embedding_to_pixel)
 
     def to_hdf5(self, hdf5_path, group_path):
         """
@@ -298,6 +299,15 @@ class FieldOfView(object):
         """
         return self._embedding_to_pixel
 
+    @property
+    def pixel_to_embedding(self):
+        """
+        The 3x3 transformation matrix that can transform
+        an [px, py, 1] vector in pixel coordinates to
+        an [x, y, 1] vector in embedding coordinates
+        """
+        return self._pixel_to_embedding
+
     def transform_to_pixel_coordinates(
             self,
             embedding_coords):
@@ -317,16 +327,34 @@ class FieldOfView(object):
             an (N, 2) array that is the input embedding
             coordinates transformed into pixel coordinates
         """
-        if len(embedding_coords.shape) != 2 or embedding_coords.shape[1] != 2:
-            raise RuntimeError(
-               "embedding_coords must be an (N, 2) array; "
-               f"yours has shape {embedding_coords.shape}"
-            )
-        input3d = np.vstack([
-            embedding_coords.transpose(),
-            np.ones(embedding_coords.shape[0])])
-        raw = np.dot(self.embedding_to_pixel, input3d).transpose()
-        return raw[:, :-1]
+        return apply_transformation(
+            input_coords=embedding_coords,
+            transformation_matrix=self.embedding_to_pixel
+        )
+
+    def transform_to_embedding_coordinates(
+            self,
+            pixel_coords):
+        """
+        Transform an array of pixel coordinates into
+        embedding coordinates.
+
+        Parameters
+        ----------
+        pixel_coords:
+            an (N, 2) array of pixel coordinates
+            to be transformed
+
+        Returns
+        -------
+        embedding_coords:
+            an (N, 2) array that is the input pixel
+            coordinates transformed into embedding coordinates
+        """
+        return apply_transformation(
+            input_coords=pixel_coords,
+            transformation_matrix=self.pixel_to_embedding
+        )
 
     def get_pixel_radii(self, n_cells_array, n_cells_max):
         """
@@ -380,3 +408,36 @@ def get_embedding_to_pixel(
     ])
 
     return embedding_to_pixel
+
+
+def apply_transformation(
+        input_coords,
+        transformation_matrix):
+    """
+    Apply transformation, either from pixel to
+    embedding coords or vice versa
+
+    Parameters
+    ----------
+    input_coords:
+        an (N, 2) array of embedding coordinates
+        to be transformed
+    transformation_matrix:
+        (3, 3) transformation matrix to be applied to the
+        coordinates
+
+    Returns
+    -------
+    output_coords:
+        an (N, 2) array that is the transformed coordinates
+    """
+    if len(input_coords.shape) != 2 or input_coords.shape[1] != 2:
+        raise RuntimeError(
+           "input_coords must be an (N, 2) array; "
+           f"yours has shape {input_coords.shape}"
+        )
+    input3d = np.vstack([
+        input_coords.transpose(),
+        np.ones(input_coords.shape[0])])
+    raw = np.dot(transformation_matrix, input3d).transpose()
+    return raw[:, :-1]

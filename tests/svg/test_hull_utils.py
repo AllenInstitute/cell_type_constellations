@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.spatial
 
-from cell_type_constellations.svg.hull_utils import (
+from cell_type_constellations.hulls.merger_utils import (
     pts_in_hull
 )
 
@@ -16,7 +16,7 @@ def test_points_in_hull():
          [1, 0],
          [0.5, 2],
          [0.5, 1.5]
-        ]
+         ]
     )
     hull = scipy.spatial.ConvexHull(hull_points)
     expected_vertices = [0, 1, 3, 4, 5]
