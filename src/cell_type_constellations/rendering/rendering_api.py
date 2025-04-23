@@ -20,6 +20,66 @@ def constellation_svg_from_hdf5(
         fill_hulls,
         render_metadata=True):
 
+    data_packet = load_constellation_data_from_hdf5(
+        hdf5_path=hdf5_path,
+        centroid_level=centroid_level,
+        hull_level=hull_level,
+        connection_coords=connection_coords
+    )
+
+    fov = data_packet["fov"]
+    centroid_list = data_packet["centroid_list"]
+    connection_list = data_packet["connection_list"]
+    hull_list = data_packet["hull_list"]
+    discrete_color_map = data_packet["discrete_color_map"]
+    connection_coords_list = data_packet["connection_coords_list"]
+    hull_level_list = data_packet["hull_level_list"]
+    continuous_field_list = data_packet["continuous_field_list"]
+    discrete_field_list = data_packet["discrete_field_list"]
+
+    try:
+        html = rendering_utils.render_svg(
+           fov=fov,
+           color_map=discrete_color_map,
+           color_by=color_by,
+           centroid_list=centroid_list,
+           connection_list=connection_list,
+           hull_list=hull_list,
+           fill_hulls=fill_hulls,
+           show_centroid_labels=show_centroid_labels)
+    except rendering_utils.CannotColorByError:
+        html = f"""
+        <p>
+        Cannot color {centroid_level} centroids by {color_by};
+        perhaps {centroid_level} is a 'parent level' of {color_by}?
+        </p>
+        """
+
+    if render_metadata:
+        taxonomy_name = get_taxonomy_name(hdf5_path)
+
+        html += get_constellation_control_code(
+            taxonomy_name=taxonomy_name,
+            centroid_level=centroid_level,
+            color_by=color_by,
+            show_centroid_labels=show_centroid_labels,
+            hull_level=hull_level,
+            connection_coords=connection_coords,
+            fill_hulls=fill_hulls,
+            discrete_field_list=discrete_field_list,
+            continuous_field_list=continuous_field_list,
+            hull_level_list=hull_level_list,
+            connection_coords_list=connection_coords_list)
+
+    return html
+
+
+def load_constellation_data_from_hdf5(
+        hdf5_path,
+        centroid_level,
+        hull_level,
+        connection_coords):
+
     if hull_level == 'NA':
         hull_level = None
 
@@ -65,9 +125,10 @@ def constellation_svg_from_hdf5(
             if hull_level is not None:
                 hull_list = []
                 for type_value in src['hulls'][hull_level].keys():
+                    group_path=f'hulls/{hull_level}/{type_value}'
                     hull = hull_classes.PixelSpaceHull.from_hdf5_handle(
                             hdf5_handle=src,
-                            group_path=f'hulls/{hull_level}/{type_value}'
+                            group_path=group_path
                         )
 
                     # somewhat irresponsible patching of hull
@@ -77,41 +138,17 @@ def constellation_svg_from_hdf5(
 
                     hull_list.append(hull)
 
-    try:
-        html = rendering_utils.render_svg(
-           fov=fov,
-           color_map=discrete_color_map,
-           color_by=color_by,
-           centroid_list=centroid_list,
-           connection_list=connection_list,
-           hull_list=hull_list,
-           fill_hulls=fill_hulls,
-           show_centroid_labels=show_centroid_labels)
-    except rendering_utils.CannotColorByError:
-        html = f"""
-        <p>
-        Cannot color {centroid_level} centroids by {color_by};
-        perhaps {centroid_level} is a 'parent level' of {color_by}?
-        </p>
-        """
-
-    if render_metadata:
-        taxonomy_name = get_taxonomy_name(hdf5_path)
-
-        html += get_constellation_control_code(
-            taxonomy_name=taxonomy_name,
-            centroid_level=centroid_level,
-            color_by=color_by,
-            show_centroid_labels=show_centroid_labels,
-            hull_level=hull_level,
-            connection_coords=connection_coords,
-            fill_hulls=fill_hulls,
-            discrete_field_list=discrete_field_list,
-            continuous_field_list=continuous_field_list,
-            hull_level_list=hull_level_list,
-            connection_coords_list=connection_coords_list)
-
-    return html
+    return {
+        "discrete_color_map": discrete_color_map,
+        "centroid_list": centroid_list,
+        "connection_list": connection_list,
+        "hull_list": hull_list,
+        "connection_coords_list": connection_coords_list,
+        "continuous_field_list": continuous_field_list,
+        "discrete_field_list": discrete_field_list,
+        "hull_level_list": hull_level_list,
+        "fov": fov
+    }
 
 
 def get_constellation_control_code(
