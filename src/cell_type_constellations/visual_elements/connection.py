@@ -581,6 +581,7 @@ def get_bezier_control_points(
     orthogonals = np.zeros((n_conn, 2), dtype=float)
     distances = np.zeros(n_conn, dtype=float)
     charges = np.zeros(n_centroids+n_conn, dtype=float)
+    origins = np.zeros((n_conn, 2), dtype=float)
 
     # if True, then the connection is linked to the centroid
     is_linked = np.zeros((n_conn, n_centroids), dtype=bool)
@@ -604,6 +605,8 @@ def get_bezier_control_points(
     for i_conn, conn in enumerate(connection_list):
         background[n_centroids+i_conn, :] = 0.5*(conn.src.center_pt
                                               + conn.dst.center_pt)
+        origins[i_conn, :] = 0.5*(conn.src.center_pt
+                                  + conn.dst.center_pt)
         charges[n_centroids+i_conn] = mid_charge
 
         dd = conn.dst.center_pt-conn.src.center_pt
@@ -614,16 +617,24 @@ def get_bezier_control_points(
         orthogonals[i_conn, :] = geometry_utils.rot(dd, 0.5*np.pi)
 
     max_acc = 1.0
-    n_iter = 10
+    n_iter = 100
+
+    # don't let a point drift more than this ratio times the distance
+    # between the connection's end points away from its initial position
+    max_total_displacement = 0.25
+
     n_tot = 0
     n_adj = 0
 
     mask = np.ones(n_centroids+n_conn, dtype=bool)
     speed = np.zeros(n_conn, dtype=float)
     functional_charges = np.copy(charges)
+    keep_moving = np.ones(n_conn, dtype=bool)
 
     for i_iter in range(n_iter):
         for i_conn in range(n_conn):
+            if not keep_moving[i_conn]:
+                continue
 
             # mask out self repulsion
             mask[n_centroids+i_conn] = False
@@ -646,8 +657,13 @@ def get_bezier_control_points(
             speed[i_conn] += ortho_force
             displacement_vector = speed[i_conn]*orthogonals[i_conn, :]
             displacement = np.sqrt((displacement_vector**2).sum())
-
-            background[n_centroids+i_conn, :] = test_pt + displacement_vector
+           
+            candidate = test_pt + displacement_vector
+            dd = np.sqrt(((candidate-origins[i_conn, :])**2).sum())/distances[i_conn]
+            if dd > max_total_displacement:
+                keep_moving[i_conn] = False
+            else:
+                background[n_centroids+i_conn, :] = candidate
 
             mask[n_centroids+i_conn] = True
             functional_charges[is_linked_idx] = end_charge
@@ -655,8 +671,13 @@ def get_bezier_control_points(
             if displacement > 1.0e-3:
                 n_tot += 1
 
-        print(f"    {n_tot} pts displaced")
-    return background[n_centroids:, :]
+        results = background[n_centroids:, :]
+        dd = np.sqrt(((results-origins)**2).sum(axis=1))/distances
+        print(f"    {n_tot} pts displaced -- "
+              f"keep_moving {keep_moving.sum()} vs {keep_moving.shape} -- "
+              f"{np.quantile(dd, (0.25, 0.5, 0.75))} {dd.max()}")
+    results = background[n_centroids:, :]
+    return results
 
 
 def compute_force(
