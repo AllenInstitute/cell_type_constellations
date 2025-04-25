@@ -8,3 +8,11 @@ def sanitize_taxon_name(name):
     """
     new_name = name.replace('/', '$SLASH$')
     return new_name
+
+
+def desanitize_taxon_name(name):
+    """
+    Undo sanitize_taxon_name
+    """
+    new_name = name.replace('$SLASH$', '/')
+    return new_name

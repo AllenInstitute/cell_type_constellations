@@ -2,6 +2,7 @@ import h5py
 import json
 import pathlib
 
+import cell_type_constellations.utils.str_utils as str_utils
 import cell_type_constellations.app.html_utils as html_utils
 import cell_type_constellations.visual_elements.centroid as centroid
 import cell_type_constellations.visual_elements.connection as connection
@@ -134,7 +135,9 @@ def load_constellation_data_from_hdf5(
                     # somewhat irresponsible patching of hull
                     # to contain type_field and type_value
                     hull.type_field = hull_level
-                    hull.type_value = type_value
+                    hull.type_value = str_utils.desanitize_taxon_name(
+                        type_value
+                    )
 
                     hull_list.append(hull)
 
