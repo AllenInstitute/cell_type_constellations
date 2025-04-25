@@ -108,6 +108,7 @@ def get_connection_list(
         connection_list.append(conn)
 
     bezier_control_points = get_bezier_control_points(
+        centroid_list=centroid_list,
         connection_list=connection_list)
 
     for conn, bez in zip(connection_list, bezier_control_points):
@@ -557,6 +558,7 @@ def _intersection_points(
 
 
 def get_bezier_control_points(
+        centroid_list,
         connection_list):
     """
     Take a list of Connections. Find the control points for the Bezier
@@ -573,46 +575,36 @@ def get_bezier_control_points(
     self_end_charge = -5.0
 
     n_conn = len(connection_list)
-    background = np.zeros((3*n_conn, 2), dtype=float)
+    n_centroids = len(centroid_list)
+    n_background = len(centroid_list)
+    background = np.zeros((n_centroids+n_conn, 2), dtype=float)
     orthogonals = np.zeros((n_conn, 2), dtype=float)
     distances = np.zeros(n_conn, dtype=float)
-    charges = np.zeros(3*n_conn, dtype=float)
+    charges = np.zeros(n_centroids+n_conn, dtype=float)
 
-    # if shared_src[ii][jj] is True, conn[ii] overlaps conn[jj] src
-    shared_src = np.zeros((len(connection_list), len(connection_list)), dtype=bool)
+    # if True, then the connection is linked to the centroid
+    is_linked = np.zeros((n_conn, n_centroids), dtype=bool)
 
-    # if shared_dst[ii][jj] is True, conn[ii] overlaps conn[jj] dst
-    shared_dst = np.zeros((len(connection_list), len(connection_list)), dtype=bool)
-    for i0 in range(len(connection_list)):
-        c0 = connection_list[i0]
-        for i1 in range(i0+1, len(connection_list), 1):
-            c1 = connection_list[i1]
-            if c1.src is c0.dst:
-                shared_src[i0][i1] = True
-                shared_dst[i1][i0] = True
-            elif c1.src is c0.src:
-                shared_src[i0][i1] = True
-                shared_src[i1][i0] = True
+    for i0 in range(n_conn):
+        conn = connection_list[i0]
+        for i1 in range(n_centroids):
+            if conn.src is centroid_list[i1]:
+                is_linked[i0][i1] = True
+            if conn.dst is centroid_list[i1]:
+                is_linked[i0][i1] = True
 
-            if c1.dst is c0.src:
-                shared_dst[i0][i1] = True
-                shared_src[i1][i0] = True
-            elif c1.dst is c0.dst:
-                shared_dst[i0][i1] = True
-                shared_dst[i1][i0] = True
+    assert is_linked.sum() == 2*n_conn
 
-    assert shared_dst.sum() > 0 and shared_dst.sum() < shared_dst.size
-    assert shared_src.sum() >0 and shared_dst.sum() < shared_dst.size
+    # first n_centroids points are the centroids
+    for ii, centroid in enumerate(centroid_list):
+        background[ii, :] = centroid.center_pt
+        charges[ii] = end_charge
 
+    # then the bezier control points
     for i_conn, conn in enumerate(connection_list):
-        background[i_conn*2, :] = conn.src.center_pt
-        background[1+i_conn*2, :] = conn.dst.center_pt
-        charges[i_conn*2] = end_charge
-        charges[1+i_conn*2] = end_charge
-
-        background[2*n_conn+i_conn, :] = 0.5*(conn.src.center_pt
+        background[n_centroids+i_conn, :] = 0.5*(conn.src.center_pt
                                               + conn.dst.center_pt)
-        charges[2*n_conn+i_conn] = mid_charge
+        charges[n_centroids+i_conn] = mid_charge
 
         dd = conn.dst.center_pt-conn.src.center_pt
         distances[i_conn] = np.sqrt(
@@ -623,27 +615,24 @@ def get_bezier_control_points(
 
     max_acc = 1.0
     n_iter = 10
-    mask = np.ones(3*n_conn, dtype=bool)
     n_tot = 0
     n_adj = 0
 
+    mask = np.ones(n_centroids+n_conn, dtype=bool)
     speed = np.zeros(n_conn, dtype=float)
     functional_charges = np.copy(charges)
 
     for i_iter in range(n_iter):
         for i_conn in range(n_conn):
-            mask[:] = True
 
-            mask[2*n_conn+i_conn] = False
-            shared_src_idx = np.where(shared_src[i_conn, :])[0]
-            mask[2*shared_src_idx] = False
-            shared_dst_idx = np.where(shared_dst[i_conn, :])[0]
-            mask[1+2*shared_dst_idx] = False
+            # mask out self repulsion
+            mask[n_centroids+i_conn] = False
 
-            functional_charges[i_conn*2] = self_end_charge
-            functional_charges[1+i_conn*2] = self_end_charge
+            # make each connection's own end points attractive
+            is_linked_idx = np.where(is_linked[i_conn, :])[0]
+            functional_charges[is_linked_idx] = self_end_charge
 
-            test_pt = background[2*n_conn+i_conn, :]
+            test_pt = background[n_centroids+i_conn, :]
             force = compute_force(
                 test_pt=test_pt,
                 background_points=background[mask, :],
@@ -658,16 +647,16 @@ def get_bezier_control_points(
             displacement_vector = speed[i_conn]*orthogonals[i_conn, :]
             displacement = np.sqrt((displacement_vector**2).sum())
 
-            background[2*n_conn+i_conn, :] = test_pt + displacement_vector
+            background[n_centroids+i_conn, :] = test_pt + displacement_vector
 
-            functional_charges[i_conn*2] = end_charge
-            functional_charges[1+i_conn*2] = end_charge
+            mask[n_centroids+i_conn] = True
+            functional_charges[is_linked_idx] = end_charge
 
             if displacement > 1.0e-3:
                 n_tot += 1
 
         print(f"    {n_tot} pts displaced")
-    return background[2*n_conn:, :]
+    return background[n_centroids:, :]
 
 
 def compute_force(
