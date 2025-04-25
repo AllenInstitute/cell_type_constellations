@@ -203,7 +203,9 @@ def write_pixel_connections_to_hdf5(
 
 def read_pixel_connections_from_hdf5(
         hdf5_path,
-        group_path):
+        group_path,
+        fov,
+        convert_to_embedding=False):
     """
     Read a list of PixelSpaceConnections from a specific
     group in an HDF5 file. Return the list of
@@ -213,13 +215,17 @@ def read_pixel_connections_from_hdf5(
     with h5py.File(hdf5_path, 'r') as src:
         result = read_pixel_connections_from_hdf5_handle(
             hdf5_handle=src,
-            group_path=group_path)
+            group_path=group_path,
+            fov=fov,
+            convert_to_embedding=convert_to_embedding)
     return result
 
 
 def read_pixel_connections_from_hdf5_handle(
         hdf5_handle,
-        group_path):
+        group_path,
+        fov,
+        convert_to_embedding=False):
 
     src_grp = hdf5_handle[group_path]
     src_label_list = [
@@ -233,10 +239,26 @@ def read_pixel_connections_from_hdf5_handle(
     src_frac_list = src_grp['src_neighbor_fraction'][()]
     dst_frac_list = src_grp['dst_neighbor_fraction'][()]
     n_connections = len(src_label_list)
-    rendering_corners = src_grp['rendering_corners'][()].reshape(
+
+    rendering_corners = src_grp['rendering_corners'][()]
+
+    if convert_to_embedding:
+        rendering_corners = fov.transform_to_embedding_coordinates(
+            rendering_corners
+        )
+
+    rendering_corners = rendering_corners.reshape(
         (n_connections, 4, 2)
     )
-    bezier_control_points = src_grp['bezier_control_points'][()].reshape(
+
+    bezier_control_points = src_grp['bezier_control_points'][()]
+
+    if convert_to_embedding:
+        bezier_control_points = fov.transform_to_embedding_coordinates(
+            bezier_control_points
+        )
+
+    bezier_control_points=bezier_control_points.reshape(
         (n_connections, 2, 2)
     )
 

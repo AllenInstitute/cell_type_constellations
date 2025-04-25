@@ -79,7 +79,8 @@ def load_constellation_data_from_hdf5(
         hdf5_path,
         centroid_level,
         hull_level,
-        connection_coords):
+        connection_coords,
+        convert_to_embedding=False):
 
     if hull_level == 'NA':
         hull_level = None
@@ -94,11 +95,15 @@ def load_constellation_data_from_hdf5(
 
         centroid_list = centroid.read_pixel_centroids_from_hdf5_handle(
             hdf5_handle=src,
-            group_path=f'{centroid_level}/centroids')
+            group_path=f'{centroid_level}/centroids',
+            fov=fov,
+            convert_to_embedding=convert_to_embedding)
 
         connection_list = connection.read_pixel_connections_from_hdf5_handle(
             hdf5_handle=src,
-            group_path=f'{centroid_level}/connections/{connection_coords}'
+            group_path=f'{centroid_level}/connections/{connection_coords}',
+            fov=fov,
+            convert_to_embedding=convert_to_embedding
         )
 
         discrete_field_list = json.loads(

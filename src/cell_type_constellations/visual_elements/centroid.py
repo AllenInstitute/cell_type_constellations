@@ -315,7 +315,9 @@ def write_pixel_centroids_to_hdf5(
 
 def read_pixel_centroids_from_hdf5(
         hdf5_path,
-        group_path):
+        group_path,
+        fov,
+        convert_to_embedding=False):
     """
     Read a list of PixelSpaceCentroids from a specific
     group in an HDF5 file. Return the list of centroids.
@@ -324,18 +326,39 @@ def read_pixel_centroids_from_hdf5(
     with h5py.File(hdf5_path, 'r') as src:
         result = read_pixel_centroids_from_hdf5_handle(
             hdf5_handle=src,
-            group_path=group_path)
+            group_path=group_path,
+            fov=fov,
+            convert_to_embedding=convert_to_embedding)
     return result
 
 
 def read_pixel_centroids_from_hdf5_handle(
         hdf5_handle,
-        group_path):
+        group_path,
+        fov,
+        convert_to_embedding=False):
 
     src_grp = hdf5_handle[group_path]
     pixel_x_arr = src_grp['x'][()]
     pixel_y_arr = src_grp['y'][()]
+
+    if convert_to_embedding:
+        coords = np.vstack(
+           [pixel_x_arr,
+            pixel_y_arr]
+        ).transpose()
+        coords = fov.transform_to_embedding_coordinates(
+            coords
+        )
+        pixel_x_arr = coords[:, 0]
+        pixel_y_arr = coords[:, 1]
+        del coords
+
     radius_arr = src_grp['r'][()]
+    if convert_to_embedding:
+        factor = (pixel_y_arr.max()-pixel_y_arr.min())/fov.height
+        radius_arr *= factor
+
     n_cells_arr = src_grp['n_cells'][()]
     label_arr = [
         label.decode('utf-8')
