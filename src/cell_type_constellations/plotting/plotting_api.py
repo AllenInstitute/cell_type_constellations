@@ -1,6 +1,8 @@
 import matplotlib
+import numpy as np
 
 import cell_type_constellations.rendering.rendering_api as rendering_api
+import cell_type_constellations.plotting.bezier as bezier_utils
 
 
 def plot_constellation_in_mpl(
@@ -33,6 +35,43 @@ def plot_constellation_in_mpl(
             (centroid.pixel_x, centroid.pixel_y),
             radius=centroid.radius,
             facecolor=color,
-            edgecolor='#aaaaaa'
+            edgecolor='#bbbbbb',
+            zorder=centroid_zorder
         )
         axis.add_artist(node)
+
+    for connection in constellation_data['connection_list']:
+        plot_connection_in_mpl(
+            connection=connection,
+            axis=axis,
+            zorder=connection_zorder
+        )
+
+
+def plot_connection_in_mpl(connection, axis, zorder):
+
+    corner_pts = connection.rendering_corners
+    ctrl_pts = connection.bezier_control_points
+
+    bez01 = bezier_utils.quadratic_bezier(
+        src_pt=corner_pts[0, :],
+        dst_pt=corner_pts[1, :],
+        ctrl_pt=ctrl_pts[0, :]
+    )
+
+    bez23 = bezier_utils.quadratic_bezier(
+        src_pt=corner_pts[2, :],
+        dst_pt=corner_pts[3, :],
+        ctrl_pt=ctrl_pts[1, :]
+    )
+
+    pts = np.vstack(
+        [corner_pts[0, :],
+         bez01,
+         corner_pts[1:2, :],
+         bez23,
+         corner_pts[3, :],
+         corner_pts[0, :]
+         ]
+    )
+    axis.fill(pts[:, 0], pts[:, 1], color='#bbbbbb', zorder=zorder)

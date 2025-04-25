@@ -341,8 +341,20 @@ def read_pixel_centroids_from_hdf5_handle(
     src_grp = hdf5_handle[group_path]
     pixel_x_arr = src_grp['x'][()]
     pixel_y_arr = src_grp['y'][()]
+    radius_arr = src_grp['r'][()]
 
     if convert_to_embedding:
+        # find a point on each circle that is at the edge
+        # of the circle; transform it to embedding points
+        # to find the new radii of the circle
+        top_pt = np.vstack(
+            [pixel_x_arr,
+             pixel_y_arr+radius_arr]
+        ).transpose()
+        top_pt = fov.transform_to_embedding_coordinates(
+            top_pt
+        )
+
         coords = np.vstack(
            [pixel_x_arr,
             pixel_y_arr]
@@ -352,12 +364,12 @@ def read_pixel_centroids_from_hdf5_handle(
         )
         pixel_x_arr = coords[:, 0]
         pixel_y_arr = coords[:, 1]
-        del coords
 
-    radius_arr = src_grp['r'][()]
-    if convert_to_embedding:
-        factor = (pixel_y_arr.max()-pixel_y_arr.min())/fov.height
-        radius_arr *= factor
+        radius_arr = np.sqrt(
+            ((top_pt-coords)**2).sum(axis=1)
+        )
+
+        del coords
 
     n_cells_arr = src_grp['n_cells'][()]
     label_arr = [
