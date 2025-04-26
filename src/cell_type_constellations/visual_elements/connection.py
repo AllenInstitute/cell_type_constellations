@@ -573,6 +573,7 @@ def get_bezier_control_points(
     end_charge = 5.0
     mid_charge = 1.0
     self_end_charge = -5.0
+    spring_constant = 2.0
 
     n_conn = len(connection_list)
     n_centroids = len(centroid_list)
@@ -616,8 +617,8 @@ def get_bezier_control_points(
         dd = dd/distances[i_conn]
         orthogonals[i_conn, :] = geometry_utils.rot(dd, 0.5*np.pi)
 
-    max_acc = 1.0
-    n_iter = 100
+    max_acc = 100.0
+    n_iter = 200
 
     # don't let a point drift more than this ratio times the distance
     # between the connection's end points away from its initial position
@@ -650,6 +651,14 @@ def get_bezier_control_points(
                 charges=functional_charges[mask]
             )
             ortho_force = np.dot(force, orthogonals[i_conn, :])
+            from_origin = (test_pt-origins[i_conn, :])
+            dd_from_origin = np.sqrt(
+                (from_origin**2).sum()
+            )
+
+            spring_force = -1.0*spring_constant*dd_from_origin*from_origin/(distances[i_conn]**2)
+            ortho_force += np.dot(spring_force, orthogonals[i_conn, :])
+
             acc = np.sqrt((ortho_force**2).sum())
             if acc > max_acc:
                 ortho_force *= max_acc/acc
@@ -657,7 +666,7 @@ def get_bezier_control_points(
             speed[i_conn] += ortho_force
             displacement_vector = speed[i_conn]*orthogonals[i_conn, :]
             displacement = np.sqrt((displacement_vector**2).sum())
-           
+
             candidate = test_pt + displacement_vector
             dd = np.sqrt(((candidate-origins[i_conn, :])**2).sum())/distances[i_conn]
             if dd > max_total_displacement:
