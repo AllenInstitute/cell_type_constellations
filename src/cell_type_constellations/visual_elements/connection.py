@@ -10,6 +10,7 @@ in actual pixel space, not in embedding space
 import h5py
 import numpy as np
 
+import cell_type_constellations.plotting.bezier as bezier_utils
 import cell_type_constellations.utils.geometry_utils as geometry_utils
 import cell_type_constellations.utils.connection_utils as connection_utils
 
@@ -570,10 +571,11 @@ def get_bezier_control_points(
     needs to transform these into the two control points, one for the "upper"
     edge, one for the "lower" edge).
     """
-    end_charge = 5.0
-    mid_charge = 1.0
-    self_end_charge = -5.0
-    spring_constant = 2.0
+    #end_charge = 5.0
+    #mid_charge = 5.0
+    #self_end_charge = 5.0
+    spring_constant = 1.0
+    time_step = 0.1
 
     n_conn = len(connection_list)
     n_centroids = len(centroid_list)
@@ -583,6 +585,7 @@ def get_bezier_control_points(
     distances = np.zeros(n_conn, dtype=float)
     charges = np.zeros(n_centroids+n_conn, dtype=float)
     origins = np.zeros((n_conn, 2), dtype=float)
+    velocities = np.zeros((n_conn, 2), dtype=float)
 
     # if True, then the connection is linked to the centroid
     is_linked = np.zeros((n_conn, n_centroids), dtype=bool)
@@ -600,7 +603,9 @@ def get_bezier_control_points(
     # first n_centroids points are the centroids
     for ii, centroid in enumerate(centroid_list):
         background[ii, :] = centroid.center_pt
-        charges[ii] = end_charge
+        charges[ii] = centroid.radius
+
+    mid_charge = np.median(charges[:n_centroids])
 
     # then the bezier control points
     for i_conn, conn in enumerate(connection_list):
@@ -617,8 +622,11 @@ def get_bezier_control_points(
         dd = dd/distances[i_conn]
         orthogonals[i_conn, :] = geometry_utils.rot(dd, 0.5*np.pi)
 
+    charges *= time_step
+    spring_constant *= time_step
+
     max_acc = 100.0
-    n_iter = 200
+    n_iter = 101
 
     # don't let a point drift more than this ratio times the distance
     # between the connection's end points away from its initial position
@@ -626,13 +634,16 @@ def get_bezier_control_points(
 
     n_tot = 0
     n_adj = 0
+    spring_gt_coulomb = 0.0
 
     mask = np.ones(n_centroids+n_conn, dtype=bool)
-    speed = np.zeros(n_conn, dtype=float)
-    functional_charges = np.copy(charges)
+    #functional_charges = np.copy(charges)
     keep_moving = np.ones(n_conn, dtype=bool)
 
     for i_iter in range(n_iter):
+        if keep_moving.sum() == 0:
+            break
+    #while keep_moving.sum() > 0:
         for i_conn in range(n_conn):
             if not keep_moving[i_conn]:
                 continue
@@ -642,32 +653,39 @@ def get_bezier_control_points(
 
             # make each connection's own end points attractive
             is_linked_idx = np.where(is_linked[i_conn, :])[0]
-            functional_charges[is_linked_idx] = self_end_charge
+            mask[is_linked_idx] = False
+            #functional_charges[is_linked_idx] = self_end_charge
 
             test_pt = background[n_centroids+i_conn, :]
-            force = compute_force(
+            coulomb_force = compute_force(
                 test_pt=test_pt,
                 background_points=background[mask, :],
-                charges=functional_charges[mask]
-            )
-            ortho_force = np.dot(force, orthogonals[i_conn, :])
-            from_origin = (test_pt-origins[i_conn, :])
-            dd_from_origin = np.sqrt(
-                (from_origin**2).sum()
+                charges=charges[mask],
+                src_pt=background[is_linked_idx[0]],
+                dst_pt=background[is_linked_idx[1]],
+                n_centroids=n_centroids-2  # -2 because masking src and end pts
             )
 
-            spring_force = -1.0*spring_constant*dd_from_origin*from_origin/(distances[i_conn]**2)
-            ortho_force += np.dot(spring_force, orthogonals[i_conn, :])
+            if True:
+                from_origin = (test_pt-origins[i_conn, :])
+                d_from_origin = np.sqrt((from_origin**2).sum())
+                spring_force = -1.0*spring_constant*from_origin/(distances[i_conn]**2)
+                force = coulomb_force + spring_force
+                if (spring_force**2).sum() > (coulomb_force**2).sum():
+                    spring_gt_coulomb += 1
+            else:
+                force = coulomb_force
 
-            acc = np.sqrt((ortho_force**2).sum())
-            if acc > max_acc:
-                ortho_force *= max_acc/acc
+            alpha = np.dot(force, orthogonals[i_conn, :])
+            force = alpha*orthogonals[i_conn, :]
 
-            speed[i_conn] += ortho_force
-            displacement_vector = speed[i_conn]*orthogonals[i_conn, :]
-            displacement = np.sqrt((displacement_vector**2).sum())
+            #acc = np.sqrt((force**2).sum())
+            #if acc > max_acc:
+            #    force *= max_acc/acc
+            #    n_adj += 1
 
-            candidate = test_pt + displacement_vector
+            candidate = test_pt + velocities[i_conn, :]
+            velocities[i_conn, :] += force
             dd = np.sqrt(((candidate-origins[i_conn, :])**2).sum())/distances[i_conn]
             if dd > max_total_displacement:
                 keep_moving[i_conn] = False
@@ -675,16 +693,18 @@ def get_bezier_control_points(
                 background[n_centroids+i_conn, :] = candidate
 
             mask[n_centroids+i_conn] = True
-            functional_charges[is_linked_idx] = end_charge
+            mask[is_linked_idx] = True
+            #functional_charges[is_linked_idx] = end_charge
 
+            displacement = np.sqrt((velocities**2).sum())
             if displacement > 1.0e-3:
                 n_tot += 1
 
         results = background[n_centroids:, :]
         dd = np.sqrt(((results-origins)**2).sum(axis=1))/distances
-        print(f"    {n_tot} pts displaced -- "
+        print(f"    {n_tot} pts displaced -- adjusted {n_adj} accelerations -- "
               f"keep_moving {keep_moving.sum()} vs {keep_moving.shape} -- "
-              f"{np.quantile(dd, (0.25, 0.5, 0.75))} {dd.max()}")
+              f"spring_gt {spring_gt_coulomb} -- ddmax {dd.max()}")
     results = background[n_centroids:, :]
     return results
 
@@ -693,12 +713,34 @@ def compute_force(
         test_pt,
         background_points,
         charges,
+        src_pt,
+        dst_pt,
+        n_centroids,
         eps=0.001):
 
-    vectors = test_pt-background_points
-    rsq = (vectors**2).sum(axis=1)
+    bez = bezier_utils.quadratic_bezier(
+        src_pt=src_pt,
+        dst_pt=dst_pt,
+        ctrl_pt=test_pt,
+        t_steps=50
+    )
+
+    rsq = 1.0e6*np.ones(background_points.shape[0], dtype=float)
+    vectors = np.zeros(background_points.shape, dtype=float)
+    for bb in bez:
+        delta = (bb-background_points[:n_centroids, :])
+        delta_rsq = (delta**2).sum(axis=1)
+        valid = np.where(delta_rsq < rsq[:n_centroids])[0]
+        vectors[valid, :] = delta[valid, :]
+        rsq[valid] = delta_rsq[valid]
+
+
+    #vectors[n_centroids:, :] = (test_pt-background_points[n_centroids:, :])
+
+    rsq[n_centroids:] = (vectors[n_centroids:]**2).sum(axis=1)
+
     rsq = np.where(rsq > eps, rsq, eps)
-    weights = charges/np.power(rsq, 2.0)
+    weights = charges/np.power(rsq, 1.5)
     force = (vectors.transpose()*weights).sum(axis=1)
     return force
 
