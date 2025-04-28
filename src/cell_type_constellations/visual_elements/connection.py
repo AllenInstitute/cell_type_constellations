@@ -574,7 +574,7 @@ def get_bezier_control_points(
     #end_charge = 5.0
     #mid_charge = 5.0
     #self_end_charge = 5.0
-    spring_constant = 2.0
+    spring_constant = 1.0
     time_step = 0.1
 
     n_conn = len(connection_list)
