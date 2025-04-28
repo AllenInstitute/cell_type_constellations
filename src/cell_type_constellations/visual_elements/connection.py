@@ -574,7 +574,7 @@ def get_bezier_control_points(
     #end_charge = 5.0
     #mid_charge = 5.0
     #self_end_charge = 5.0
-    spring_constant = 1.0
+    spring_constant = 2.0
     time_step = 0.1
 
     n_conn = len(connection_list)
@@ -605,7 +605,8 @@ def get_bezier_control_points(
         background[ii, :] = centroid.center_pt
         charges[ii] = centroid.radius
 
-    mid_charge = 0.5*np.median(charges[:n_centroids])
+    #mid_charge = 0.5*np.median(charges[:n_centroids])
+    mid_charge = 1.0
 
     # then the bezier control points
     for i_conn, conn in enumerate(connection_list):
