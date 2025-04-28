@@ -752,7 +752,6 @@ def compute_coulomb_force(
         vectors[valid, :] = delta[valid, :]
         rsq[valid] = delta_rsq[valid]
 
-
     vectors[n_centroids:, :] = (test_pt-background_points[n_centroids:, :])
     rsq[n_centroids:] = (vectors[n_centroids:]**2).sum(axis=1)
 
