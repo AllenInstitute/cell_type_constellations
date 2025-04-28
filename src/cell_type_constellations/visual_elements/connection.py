@@ -745,16 +745,13 @@ def compute_coulomb_force(
 
     rsq = 1.0e6*np.ones(background_points.shape[0], dtype=float)
     vectors = np.zeros(background_points.shape, dtype=float)
-    r_centroid = np.sqrt(
-        ((test_pt-background_points[:n_centroids, :])**2).sum(axis=1)
-    )
     for bb in bez:
         delta = (bb-background_points[:n_centroids, :])
-        delta_r = np.sqrt((delta**2).sum(axis=1))
-        delta_rsq = delta_r*r_centroid
+        delta_rsq = (delta**2).sum(axis=1)
         valid = np.where(delta_rsq < rsq[:n_centroids])[0]
         vectors[valid, :] = delta[valid, :]
         rsq[valid] = delta_rsq[valid]
+
 
     vectors[n_centroids:, :] = (test_pt-background_points[n_centroids:, :])
     rsq[n_centroids:] = (vectors[n_centroids:]**2).sum(axis=1)
