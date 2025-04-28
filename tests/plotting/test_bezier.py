@@ -68,3 +68,32 @@ def test_cubic_bezier(t_steps):
         atol=0.0,
         rtol=1.0e-6
     )
+
+
+def test_quadratic_ctrl_from_mid_pt():
+    """
+    Just test that running function in batch form works
+    """
+    rng = np.random.default_rng(22131)
+    n_pts = 5
+    src_pts = rng.random((n_pts, 2))
+    dst_pts = rng.random((n_pts, 2))
+    mid_pts = rng.random((n_pts, 2))
+
+    ctrl_arr = bezier_utils.quadratic_ctrl_from_mid_pt(
+        src_pt=src_pts,
+        dst_pt=dst_pts,
+        mid_pt=mid_pts
+    )
+    for ii in range(n_pts):
+        actual = bezier_utils.quadratic_ctrl_from_mid_pt(
+            src_pt=src_pts[ii, :],
+            dst_pt=dst_pts[ii, :],
+            mid_pt=mid_pts[ii, :]
+        )
+        np.testing.assert_allclose(
+            actual,
+            ctrl_arr[ii, :],
+            atol=0.0,
+            rtol=1.0e-6
+        )

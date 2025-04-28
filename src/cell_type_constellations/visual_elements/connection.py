@@ -606,7 +606,7 @@ def get_bezier_control_points(
         charges[ii] = centroid.radius
 
     #mid_charge = 0.5*np.median(charges[:n_centroids])
-    mid_charge = 1.0
+    mid_charge = 0.0
 
     # then the bezier control points
     for i_conn, conn in enumerate(connection_list):
@@ -670,7 +670,7 @@ def get_bezier_control_points(
             if True:
                 from_origin = (test_pt-origins[i_conn, :])
                 d_from_origin = np.sqrt((from_origin**2).sum())
-                spring_force = -1.0*spring_constant*from_origin/(distances[i_conn]**2)
+                spring_force = -1.0*spring_constant*from_origin/(distances[i_conn])
                 force = coulomb_force + spring_force
                 if (spring_force**2).sum() > (coulomb_force**2).sum():
                     spring_gt_coulomb += 1
@@ -706,8 +706,19 @@ def get_bezier_control_points(
         print(f"    {n_tot} pts displaced -- adjusted {n_adj} accelerations -- "
               f"keep_moving {keep_moving.sum()} vs {keep_moving.shape} -- "
               f"spring_gt {spring_gt_coulomb} -- ddmax {dd.max()}")
-    results = background[n_centroids:, :]
-    return results
+    mid_pts = background[n_centroids:, :]
+    src_pts = np.array(
+        [conn.src.center_pt for conn in connection_list]
+    )
+    dst_pts = np.array(
+        [conn.dst.center_pt for conn in connection_list]
+    )
+    ctrl_pts = bezier_utils.quadratic_ctrl_from_mid_pt(
+        src_pt=src_pts,
+        dst_pt=dst_pts,
+        mid_pt=mid_pts
+    )
+    return ctrl_pts
 
 
 def compute_coulomb_force(
@@ -719,10 +730,16 @@ def compute_coulomb_force(
         n_centroids,
         eps=0.001):
 
+    ctrl_pt = bezier_utils.quadratic_ctrl_from_mid_pt(
+        src_pt=src_pt,
+        dst_pt=dst_pt,
+        mid_pt=test_pt
+    )
+
     bez = bezier_utils.quadratic_bezier(
         src_pt=src_pt,
         dst_pt=dst_pt,
-        ctrl_pt=test_pt,
+        ctrl_pt=ctrl_pt,
         t_steps=50
     )
 

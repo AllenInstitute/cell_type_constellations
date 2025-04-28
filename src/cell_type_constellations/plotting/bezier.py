@@ -30,6 +30,18 @@ def quadratic_bezier(
     return pts
 
 
+def quadratic_ctrl_from_mid_pt(
+        src_pt,
+        mid_pt,
+        dst_pt):
+    """
+    Find the control point for a bezier curve
+    whose end points and mid point are given
+    (mid point defined as the t=0.5 point)
+    """
+    pt = 2.0*(mid_pt-0.25*(src_pt+dst_pt))
+    return pt
+
 def cubic_bezier(
         src_pt,
         ctrl_pt0,
