@@ -657,7 +657,7 @@ def get_bezier_control_points(
             #functional_charges[is_linked_idx] = self_end_charge
 
             test_pt = background[n_centroids+i_conn, :]
-            coulomb_force = compute_force(
+            coulomb_force = compute_coulomb_force(
                 test_pt=test_pt,
                 background_points=background[mask, :],
                 charges=charges[mask],
@@ -709,7 +709,7 @@ def get_bezier_control_points(
     return results
 
 
-def compute_force(
+def compute_coulomb_force(
         test_pt,
         background_points,
         charges,
