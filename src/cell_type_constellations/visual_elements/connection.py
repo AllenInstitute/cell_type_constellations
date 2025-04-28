@@ -605,7 +605,7 @@ def get_bezier_control_points(
         background[ii, :] = centroid.center_pt
         charges[ii] = centroid.radius
 
-    mid_charge = np.median(charges[:n_centroids])
+    mid_charge = 0.5*np.median(charges[:n_centroids])
 
     # then the bezier control points
     for i_conn, conn in enumerate(connection_list):
@@ -735,8 +735,7 @@ def compute_coulomb_force(
         rsq[valid] = delta_rsq[valid]
 
 
-    #vectors[n_centroids:, :] = (test_pt-background_points[n_centroids:, :])
-
+    vectors[n_centroids:, :] = (test_pt-background_points[n_centroids:, :])
     rsq[n_centroids:] = (vectors[n_centroids:]**2).sum(axis=1)
 
     rsq = np.where(rsq > eps, rsq, eps)
