@@ -730,6 +730,11 @@ def compute_coulomb_force(
         n_centroids,
         eps=0.001):
 
+    d_norm = max(
+        np.sqrt(((test_pt-src_pt)**2).sum()),
+        np.sqrt(((test_pt-dst_pt)**2).sum())
+    )
+
     ctrl_pt = bezier_utils.quadratic_ctrl_from_mid_pt(
         src_pt=src_pt,
         dst_pt=dst_pt,
@@ -745,6 +750,29 @@ def compute_coulomb_force(
 
     rsq = 1.0e6*np.ones(background_points.shape[0], dtype=float)
     vectors = np.zeros(background_points.shape, dtype=float)
+    charge_norm = np.ones(background_points.shape[0], dtype=float)
+
+    d_to_src = np.sqrt(
+        ((background_points[:n_centroids]-src_pt)**2).sum(axis=1)
+    )
+
+    d_to_dst = np.sqrt(
+        ((background_points[:n_centroids]-dst_pt)**2).sum(axis=1)
+    )
+
+    d_to_end = np.where(
+        d_to_src<d_to_dst,
+        d_to_src,
+        d_to_dst
+    )
+
+    d_to_end = d_to_end / d_norm
+    charge_norm[:n_centroids] = np.where(
+        d_to_end<0.25,
+        d_to_end,
+        1.0
+    )
+
     for bb in bez:
         delta = (bb-background_points[:n_centroids, :])
         delta_rsq = (delta**2).sum(axis=1)
@@ -756,7 +784,7 @@ def compute_coulomb_force(
     rsq[n_centroids:] = (vectors[n_centroids:]**2).sum(axis=1)
 
     rsq = np.where(rsq > eps, rsq, eps)
-    weights = charges/np.power(rsq, 1.5)
+    weights = charge_norm*charges/np.power(rsq, 1.5)
     force = (vectors.transpose()*weights).sum(axis=1)
     return force
 
