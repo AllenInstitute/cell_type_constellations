@@ -571,11 +571,15 @@ def get_bezier_control_points(
     needs to transform these into the two control points, one for the "upper"
     edge, one for the "lower" edge).
     """
-    #end_charge = 5.0
-    #mid_charge = 5.0
-    #self_end_charge = 5.0
     spring_constant = 1.0
     time_step = 1.0
+
+    max_acc = 100.0
+    n_iter = 101
+
+    # don't let a point drift more than this ratio times the distance
+    # between the connection's end points away from its initial position
+    max_total_displacement = 0.25
 
     n_conn = len(connection_list)
     n_centroids = len(centroid_list)
@@ -605,7 +609,9 @@ def get_bezier_control_points(
         background[ii, :] = centroid.center_pt
         charges[ii] = centroid.radius
 
-    #mid_charge = 0.5*np.median(charges[:n_centroids])
+    # means mid points of curves are not actually repulsive
+    # of each other; leaving this here in case we want to
+    # turn that function back on later.
     mid_charge = 0.0
 
     # then the bezier control points
@@ -626,36 +632,23 @@ def get_bezier_control_points(
     spring_constant *= 0.1
     charges *= 0.1
 
-    max_acc = 100.0
-    n_iter = 101
-
-    # don't let a point drift more than this ratio times the distance
-    # between the connection's end points away from its initial position
-    max_total_displacement = 0.25
-
     n_tot = 0
-    n_adj = 0
     spring_gt_coulomb = 0.0
 
     mask = np.ones(n_centroids+n_conn, dtype=bool)
-    #functional_charges = np.copy(charges)
     keep_moving = np.ones(n_conn, dtype=bool)
 
     for i_iter in range(n_iter):
         if keep_moving.sum() == 0:
             break
-    #while keep_moving.sum() > 0:
         for i_conn in range(n_conn):
             if not keep_moving[i_conn]:
                 continue
 
-            # mask out self repulsion
-            mask[n_centroids+i_conn] = False
-
-            # make each connection's own end points attractive
+            # mask out self repulsion and linked centroids
             is_linked_idx = np.where(is_linked[i_conn, :])[0]
+            mask[n_centroids+i_conn] = False
             mask[is_linked_idx] = False
-            #functional_charges[is_linked_idx] = self_end_charge
 
             test_pt = background[n_centroids+i_conn, :]
             coulomb_force = compute_coulomb_force(
@@ -680,11 +673,6 @@ def get_bezier_control_points(
             alpha = np.dot(force, orthogonals[i_conn, :])
             force = alpha*orthogonals[i_conn, :]
 
-            #acc = np.sqrt((force**2).sum())
-            #if acc > max_acc:
-            #    force *= max_acc/acc
-            #    n_adj += 1
-
             candidate = test_pt + time_step*velocities[i_conn, :]
             velocities[i_conn, :] += time_step*force
             dd = np.sqrt(((candidate-origins[i_conn, :])**2).sum())/distances[i_conn]
@@ -695,7 +683,6 @@ def get_bezier_control_points(
 
             mask[n_centroids+i_conn] = True
             mask[is_linked_idx] = True
-            #functional_charges[is_linked_idx] = end_charge
 
             displacement = np.sqrt((velocities**2).sum())
             if displacement > 1.0e-3:
@@ -703,9 +690,11 @@ def get_bezier_control_points(
 
         results = background[n_centroids:, :]
         dd = np.sqrt(((results-origins)**2).sum(axis=1))/distances
-        print(f"    {n_tot} pts displaced -- adjusted {n_adj} accelerations -- "
-              f"keep_moving {keep_moving.sum()} vs {keep_moving.shape} -- "
-              f"spring_gt {spring_gt_coulomb} -- ddmax {dd.max()}")
+        if i_iter % 25 == 0:
+            print(f"    {i_iter} timesteps {n_tot} pts displaced -- "
+                  f"keep_moving {keep_moving.sum()} vs {keep_moving.shape} -- "
+                  f"spring_gt {spring_gt_coulomb}")
+
     mid_pts = background[n_centroids:, :]
     src_pts = np.array(
         [conn.src.center_pt for conn in connection_list]
