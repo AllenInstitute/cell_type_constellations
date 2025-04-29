@@ -134,7 +134,9 @@ def load_constellation_data_from_hdf5(
                     group_path=f'hulls/{hull_level}/{type_value}'
                     hull = hull_classes.PixelSpaceHull.from_hdf5_handle(
                             hdf5_handle=src,
-                            group_path=group_path
+                            group_path=group_path,
+                            fov=fov,
+                            convert_to_embedding=convert_to_embedding
                         )
 
                     # somewhat irresponsible patching of hull

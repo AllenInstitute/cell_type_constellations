@@ -12,11 +12,12 @@ def plot_constellation_in_mpl(
         color_by_level,
         axis,
         connection_coords='X_umap',
-        zorder_base=1):
+        zorder_base=1,
+        fill_hulls=False):
 
     hull_zorder = zorder_base
-    connection_zorder = hull_zorder + 1
-    centroid_zorder = connection_zorder + 1
+    connection_zorder = hull_zorder + 2
+    centroid_zorder = connection_zorder + 2
 
     constellation_data = rendering_api.load_constellation_data_from_hdf5(
         hdf5_path=hdf5_path,
@@ -47,6 +48,16 @@ def plot_constellation_in_mpl(
             zorder=connection_zorder
         )
 
+    if hull_level is not None:
+        for hull in constellation_data['hull_list']:
+            plot_hull_in_mpl(
+                hull=hull,
+                color=color_map[hull.type_field][hull.type_value],
+                axis=axis,
+                fill=fill_hulls,
+                zorder=hull_zorder
+            )
+
 
 def plot_connection_in_mpl(connection, axis, zorder):
 
@@ -75,3 +86,45 @@ def plot_connection_in_mpl(connection, axis, zorder):
          ]
     )
     axis.fill(pts[:, 0], pts[:, 1], color='#bbbbbb', zorder=zorder)
+
+
+def plot_hull_in_mpl(
+                hull,
+                color,
+                axis,
+                fill=False,
+                zorder=0):
+
+    sub_hull_list = split_up_hull(hull)
+    for sub_hull in sub_hull_list:
+        if fill:
+            axis.fill(
+                sub_hull[:, 0],
+                sub_hull[:, 1],
+                c=color,
+                zorder=zorder,
+                alpha=0.5,
+                linewidth=2
+            )
+        else:
+            axis.plot(
+                sub_hull[:, 0],
+                sub_hull[:, 1],
+                c=color,
+                zorder=zorder,
+                linewidth=2
+            )
+
+
+def split_up_hull(hull):
+    """
+    Return list of (N, 2) arrays of points on hull
+    """
+    result = []
+    for idx in range(hull.n_sub_hulls):
+        sub_hull = hull[idx]
+        this = np.array(
+            [pt for pt in sub_hull[::4]] + [sub_hull[0, :]]
+        )
+        result.append(this)
+    return result
