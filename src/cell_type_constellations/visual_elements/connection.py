@@ -575,7 +575,7 @@ def get_bezier_control_points(
     #mid_charge = 5.0
     #self_end_charge = 5.0
     spring_constant = 1.0
-    time_step = 0.1
+    time_step = 1.0
 
     n_conn = len(connection_list)
     n_centroids = len(centroid_list)
@@ -623,8 +623,8 @@ def get_bezier_control_points(
         dd = dd/distances[i_conn]
         orthogonals[i_conn, :] = geometry_utils.rot(dd, 0.5*np.pi)
 
-    charges *= time_step
-    spring_constant *= time_step
+    spring_constant *= 0.1
+    charges *= 0.1
 
     max_acc = 100.0
     n_iter = 101
@@ -685,8 +685,8 @@ def get_bezier_control_points(
             #    force *= max_acc/acc
             #    n_adj += 1
 
-            candidate = test_pt + velocities[i_conn, :]
-            velocities[i_conn, :] += force
+            candidate = test_pt + time_step*velocities[i_conn, :]
+            velocities[i_conn, :] += time_step*force
             dd = np.sqrt(((candidate-origins[i_conn, :])**2).sum())/distances[i_conn]
             if dd > max_total_displacement:
                 keep_moving[i_conn] = False
