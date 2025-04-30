@@ -37,6 +37,8 @@ class CellSet(object):
             "leaf level" of the taxonomy
         """
 
+        self._cell_labels = cell_metadata.index.values
+
         if discrete_fields is None:
             discrete_fields = []
         if continuous_fields is None:
@@ -137,6 +139,10 @@ class CellSet(object):
             discrete_fields=discrete_fields,
             continuous_fields=continuous_fields,
             leaf_field=leaf_field)
+
+    @property
+    def cell_labels(self):
+        return self._cell_labels
 
     @property
     def n_cells(self):

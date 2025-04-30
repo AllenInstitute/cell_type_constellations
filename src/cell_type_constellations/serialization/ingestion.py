@@ -48,7 +48,7 @@ def from_csv(
         metadata.update(membership)
         cell_metadata.append(metadata)
 
-    cell_metadata = pd.DataFrame(cell_metadata)
+    cell_metadata = pd.DataFrame(cell_metadata).set_index('cell_label')
     cell_set = cell_set_utils.CellSet(
         cell_metadata=cell_metadata,
         discrete_fields=hierarchy,
@@ -59,7 +59,8 @@ def from_csv(
     return {
         'cell_set': cell_set,
         'embedding_coords': np.array(embedding_coords),
-        'discrete_color_map': color_lookup
+        'discrete_color_map': color_lookup,
+        'cell_metadata': cell_metadata
     }
 
 
@@ -77,7 +78,9 @@ def _get_alias_to_membership(cluster_membership_path):
     for row in cluster_membership:
         alias = row['cluster_alias']
         if alias not in alias_to_membership:
-            alias_to_membership[alias] = dict()
+            alias_to_membership[alias] = {
+                'cluster_alias': alias
+            }
         set_name = row['cluster_annotation_term_set_name']
         set_label = row['cluster_annotation_term_set_label']
         name = row['cluster_annotation_term_name']

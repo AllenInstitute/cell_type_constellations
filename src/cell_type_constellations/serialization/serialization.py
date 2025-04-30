@@ -11,6 +11,7 @@ import pandas as pd
 import pathlib
 import scipy
 import tempfile
+import time
 
 from cell_type_mapper.utils.utils import (
     mkstemp_clean,
@@ -136,6 +137,7 @@ def serialize_from_h5ad(
     represented in the color map.
     """
 
+    t0 = time.time()
     tmp_dir = tempfile.mkdtemp(
         dir=tmp_dir,
         prefix='constellation_serialization_'
@@ -160,6 +162,8 @@ def serialize_from_h5ad(
         )
     finally:
         _clean_up(tmp_dir)
+    dur = (time.time()-t0)/60.0
+    print(f'SERIALIZATION TOOK {dur:.2e} MINUTES')
 
 
 def _serialize_from_h5ad(
@@ -268,7 +272,7 @@ def serialize_from_csv(
         fov_height=1080,
         max_radius=35,
         min_radius=5):
-
+    t0 = time.time()
     tmp_dir = tempfile.mkdtemp(dir=tmp_dir)
     try:
         _serialize_from_csv(
@@ -288,6 +292,8 @@ def serialize_from_csv(
         )
     finally:
         _clean_up(tmp_dir)
+    dur = (time.time()-t0)/60.0
+    print(f'SERIALIZATION TOOK {dur:.2e} MINUTES')
 
 
 def _serialize_from_csv(
@@ -359,7 +365,10 @@ def _serialize_from_csv(
         chunk_size=100000
     )
 
-    #spock
+    embedding_lookup = centroid.embedding_centroid_lookup_from_coords(
+        cell_set=cell_set,
+        coords=embedding_coords
+    )
 
     serialize_data(
         cell_set=cell_set,
