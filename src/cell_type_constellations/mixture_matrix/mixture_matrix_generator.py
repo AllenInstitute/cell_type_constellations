@@ -18,7 +18,7 @@ from cell_type_mapper.utils.utils import (
 import cell_type_constellations.utils.coord_utils as coord_utils
 
 
-def create_mixture_matrices_from_h5ad(
+def create_mixture_matrix_from_h5ad(
         cell_set,
         h5ad_path,
         k_nn,
@@ -72,7 +72,7 @@ def create_mixture_matrices_from_h5ad(
         h5ad_path=h5ad_path,
         coord_key=coord_key)
 
-    create_mixture_matrices(
+    create_mixture_matrix(
         cell_set=cell_set,
         kd_tree=kd_tree,
         k_nn=k_nn,
@@ -110,7 +110,30 @@ def _get_kd_tree_from_h5ad(
     return scipy.spatial.cKDTree(coords)
 
 
-def create_mixture_matrices(
+def create_mixture_matrix_from_coords(
+        cell_set,
+        coords,
+        k_nn,
+        dst_path,
+        tmp_dir,
+        n_processors,
+        clobber=False,
+        chunk_size=100000):
+
+    kd_tree = scipy.spatial.cKDTree(coords)
+    create_mixture_matrix(
+        cell_set=cell_set,
+        kd_tree=kd_tree,
+        k_nn=k_nn,
+        dst_path=dst_path,
+        tmp_dir=tmp_dir,
+        n_processors=n_processors,
+        clobber=clobber,
+        chunk_size=chunk_size
+    )
+
+
+def create_mixture_matrix(
         cell_set,
         kd_tree,
         k_nn,
@@ -181,7 +204,7 @@ def create_mixture_matrices(
     )
 
     try:
-        _create_mixture_matrices(
+        _create_mixture_matrix(
             cell_set=cell_set,
             kd_tree=kd_tree,
             k_nn=k_nn,
@@ -193,7 +216,7 @@ def create_mixture_matrices(
         _clean_up(tmp_dir)
 
 
-def _create_mixture_matrices(
+def _create_mixture_matrix(
         cell_set,
         kd_tree,
         k_nn,

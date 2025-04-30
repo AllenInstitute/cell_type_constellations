@@ -9,6 +9,7 @@ import matplotlib
 import numpy as np
 import pandas as pd
 import pathlib
+import scipy
 import tempfile
 
 from cell_type_mapper.utils.utils import (
@@ -21,13 +22,15 @@ from cell_type_constellations.cells.cell_set import (
 )
 
 from cell_type_constellations.mixture_matrix.mixture_matrix_generator import (
-    create_mixture_matrices_from_h5ad
+    create_mixture_matrix_from_h5ad,
+    create_mixture_matrix_from_coords
 )
 
 from cell_type_constellations.visual_elements.fov import (
     FieldOfView
 )
 
+import cell_type_constellations.serialization.ingestion as ingestion
 import cell_type_constellations.utils.coord_utils as coord_utils
 import cell_type_constellations.visual_elements.centroid as centroid
 import cell_type_constellations.visual_elements.connection as connection
@@ -229,7 +232,7 @@ def _serialize_from_h5ad(
     )
 
     (embedding_lookup,
-     connection_coords_to_mm_path) = get_raw_connection_data(
+     connection_coords_to_mm_path) = get_raw_connection_data_from_h5ad(
          cell_set=cell_set,
          h5ad_path=h5ad_path,
          visualization_coords=visualization_coords,
@@ -251,8 +254,127 @@ def _serialize_from_h5ad(
         tmp_dir=tmp_dir
     )
 
+def serialize_from_csv(
+        cell_to_cluster_path,
+        cluster_annotation_path,
+        cluster_membership_path,
+        embedding_path,
+        hierarchy,
+        dst_path,
+        tmp_dir=None,
+        clobber=False,
+        k_nn=15,
+        n_processors=4,
+        fov_height=1080,
+        max_radius=35,
+        min_radius=5):
 
-def get_raw_connection_data(
+    tmp_dir = tempfile.mkdtemp(dir=tmp_dir)
+    try:
+        _serialize_from_csv(
+            cell_to_cluster_path=cell_to_cluster_path,
+            cluster_annotation_path=cluster_annotation_path,
+            cluster_membership_path=cluster_membership_path,
+            embedding_path=embedding_path,
+            hierarchy=hierarchy,
+            dst_path=dst_path,
+            tmp_dir=tmp_dir,
+            clobber=clobber,
+            k_nn=k_nn,
+            n_processors=n_processors,
+            fov_height=fov_height,
+            max_radius=max_radius,
+            min_radius=min_radius
+        )
+    finally:
+        _clean_up(tmp_dir)
+
+
+def _serialize_from_csv(
+        cell_to_cluster_path,
+        cluster_annotation_path,
+        cluster_membership_path,
+        embedding_path,
+        hierarchy,
+        dst_path,
+        tmp_dir=None,
+        clobber=False,
+        k_nn=15,
+        n_processors=4,
+        fov_height=1080,
+        max_radius=35,
+        min_radius=5):
+
+    dst_path = pathlib.Path(dst_path)
+    if dst_path.exists():
+        if not dst_path.is_file():
+            raise RuntimeError(
+                f"{dst_path} exists but is not a file"
+            )
+        if clobber:
+            dst_path.unlink()
+        else:
+            raise RuntimeError(
+                f"{dst_path} exists; run with clobber=True to overwrite"
+            )
+
+    ingested_data = ingestion.from_csv(
+        cell_to_cluster_path=cell_to_cluster_path,
+        cluster_annotation_path=cluster_annotation_path,
+        cluster_membership_path=cluster_membership_path,
+        embedding_path=embedding_path,
+        hierarchy=hierarchy
+    )
+
+    cell_set = ingested_data['cell_set']
+    embedding_coords = ingested_data['embedding_coords']
+    discrete_color_map = ingested_data['discrete_color_map']
+
+    _validate_discrete_color_map(
+        cell_set=cell_set,
+        color_map=discrete_color_map
+    )
+
+    fov = FieldOfView.from_coords(
+        coords=embedding_coords,
+        fov_height=fov_height,
+        max_radius=max_radius,
+        min_radius=min_radius
+    )
+
+    mm_path = mkstemp_clean(
+        dir=tmp_dir,
+        prefix='mixture_matrix_',
+        suffix='.h5'
+    )
+
+    create_mixture_matrix_from_coords(
+        cell_set=cell_set,
+        coords=embedding_coords,
+        k_nn=k_nn,
+        dst_path=mm_path,
+        tmp_dir=tmp_dir,
+        n_processors=n_processors,
+        clobber=True,
+        chunk_size=100000
+    )
+
+    #spock
+
+    serialize_data(
+        cell_set=cell_set,
+        fov=fov,
+        discrete_color_map=discrete_color_map,
+        embedding_centroid_lookup=embedding_lookup,
+        visualization_coord_array=embedding_coords,
+        connection_coords_to_mm_path={'embedding': mm_path},
+        dst_path=dst_path,
+        n_processors=n_processors,
+        tmp_dir=tmp_dir
+    )
+
+
+def get_raw_connection_data_from_h5ad(
         h5ad_path,
         cell_set,
         visualization_coords,
@@ -307,7 +429,7 @@ def get_raw_connection_data(
             prefix=f'{connection_coords}_mixture_matrix_',
             suffix='.h5'
         )
-        create_mixture_matrices_from_h5ad(
+        create_mixture_matrix_from_h5ad(
             cell_set=cell_set,
             h5ad_path=h5ad_path,
             k_nn=k_nn,

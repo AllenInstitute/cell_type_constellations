@@ -59,7 +59,7 @@ def from_csv(
     return {
         'cell_set': cell_set,
         'embedding_coords': np.array(embedding_coords),
-        'discrete_color_lookup': color_lookup
+        'discrete_color_map': color_lookup
     }
 
 
