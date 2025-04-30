@@ -137,12 +137,37 @@ def embedding_centroid_lookup_from_h5ad(
     coords = coord_utils.get_coords_from_h5ad(
         h5ad_path=h5ad_path,
         coord_key=coord_key)
+
+    return embedding_centroid_lookup_from_coords(
+        cell_set=cell_set,
+        coords=coords
+    )
+
+
+def embedding_centroid_lookup_from_coords(
+        cell_set,
+        coords):
+    """
+    Instantiate a lookup table of EmbeddingSpaceCentroids from a
+    cell set and an array of embedding coordinates
+
+    Parameters
+    ----------
+    cell_set:
+        the CellSet defining how cells are grouped
+    coords:
+        an (n_cells, 2) array of embedding coordinates corresponding
+        to the cells in cell_set
+    color_map:
+        mapping from type_field, type_value to colors
+    """
     if coords.shape[1] != 2:
         raise RuntimeError(
             "Embedding coords for centroids must be "
             "2-dimensional; you gave embedding of shape "
             f"{coords.shape}"
         )
+
 
     if coords.shape[0] != cell_set.n_cells:
         raise RuntimeError(

@@ -575,7 +575,7 @@ def get_bezier_control_points(
     time_step = 1.0
 
     max_acc = 100.0
-    n_iter = 101
+    n_iter = 151
 
     # don't let a point drift more than this ratio times the distance
     # between the connection's end points away from its initial position
