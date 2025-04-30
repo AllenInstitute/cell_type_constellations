@@ -71,6 +71,15 @@ def plot_constellation_in_mpl(
 
 
 def plot_connection_in_mpl(connection, axis, zorder):
+    plotting_data = get_connection_plotting_data(connection)
+    axis.fill(
+        plotting_data['points'][:, 0],
+        plotting_data['points'][:, 1],
+        color=plotting_data['color'],
+        zorder=zorder)
+
+
+def get_connection_plotting_data(connection):
 
     corner_pts = connection.rendering_corners
     ctrl_pts = connection.bezier_control_points
@@ -96,7 +105,11 @@ def plot_connection_in_mpl(connection, axis, zorder):
          corner_pts[0, :]
          ]
     )
-    axis.fill(pts[:, 0], pts[:, 1], color='#bbbbbb', zorder=zorder)
+
+    return {
+        'points': pts,
+        'color': '#bbbbbb'
+    }
 
 
 def plot_hull_in_mpl(
