@@ -13,8 +13,10 @@ def plot_constellation_in_mpl(
         axis,
         connection_coords='X_umap',
         zorder_base=1,
-        fill_hulls=False):
+        fill_hulls=False,
+        show_labels=False):
 
+    fontsize = 15
     hull_zorder = zorder_base
     connection_zorder = hull_zorder + 2
     centroid_zorder = connection_zorder + 2
@@ -40,6 +42,15 @@ def plot_constellation_in_mpl(
             zorder=centroid_zorder
         )
         axis.add_artist(node)
+        if show_labels:
+            axis.text(
+                centroid.pixel_x,
+                centroid.pixel_y,
+                s=centroid.annotation['annotations'][centroid_level],
+                fontsize=fontsize,
+                color='#555555',
+                zorder=centroid_zorder+1
+            )
 
     for connection in constellation_data['connection_list']:
         plot_connection_in_mpl(
