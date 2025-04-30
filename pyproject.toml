@@ -9,6 +9,7 @@ description = "prototype tools for generating constellation plots"
 dependencies = [
     "anndata",
     "cherrypy",
+    "geojson",
     "h5py",
     "matplotlib",
     "numpy",
