@@ -79,7 +79,7 @@ def plot_connection_in_mpl(connection, axis, zorder):
         zorder=zorder)
 
 
-def get_connection_plotting_data(connection):
+def get_connection_plotting_data(connection, t_steps=50):
 
     corner_pts = connection.rendering_corners
     ctrl_pts = connection.bezier_control_points
@@ -87,13 +87,15 @@ def get_connection_plotting_data(connection):
     bez01 = bezier_utils.quadratic_bezier(
         src_pt=corner_pts[0, :],
         dst_pt=corner_pts[1, :],
-        ctrl_pt=ctrl_pts[0, :]
+        ctrl_pt=ctrl_pts[0, :],
+        t_steps=t_steps
     )
 
     bez23 = bezier_utils.quadratic_bezier(
         src_pt=corner_pts[2, :],
         dst_pt=corner_pts[3, :],
-        ctrl_pt=ctrl_pts[1, :]
+        ctrl_pt=ctrl_pts[1, :],
+        t_steps=t_steps
     )
 
     pts = np.vstack(

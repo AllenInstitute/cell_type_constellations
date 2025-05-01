@@ -9,13 +9,15 @@ description = "prototype tools for generating constellation plots"
 dependencies = [
     "anndata",
     "cherrypy",
+    "geojson",
     "h5py",
+    "jupyter",
     "matplotlib",
     "numpy",
     "scipy",
     "pandas",
     "pytest",
-    "cell_type_mapper @ git+https://github.com/AllenInstitute/cell_type_mapper@rc/v1.4.0"
+    "cell_type_mapper @ git+https://github.com/AllenInstitute/cell_type_mapper@v1.4.0"
 ]
 requires-python = ">=3.8"
 authors = [
