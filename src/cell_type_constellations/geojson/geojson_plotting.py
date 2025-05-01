@@ -36,21 +36,22 @@ def plot_geojson_constellation(
     centroid_level = geojson_data.properties['centroid_level']
 
     for feature in geojson_data.features:
-        if feature.geometry.type == 'Point':
+        feature_class = feature.properties['class']
+        if feature_class == 'centroid':
             plot_geojson_centroid(
                 geojson_centroid=feature.geometry,
                 axis=axis,
                 zorder=centroid_zorder,
                 color_by_level=centroid_level
             )
-        elif feature.geometry.type == 'Polygon':
+        elif feature_class == 'connection':
             plot_geojson_polygon(
                 axis=axis,
                 polygon=feature.geometry,
                 zorder=connection_zorder,
                 fill=True
             )
-        elif feature.geometry.type == 'MultiPolygon':
+        elif feature_class == 'hull':
             if plot_hulls:
                 plot_geojson_multipolygon(
                     axis=axis,
@@ -61,7 +62,7 @@ def plot_geojson_constellation(
         else:
             raise NotImplementedError(
                 "Unclear how to plot feature of type "
-                f"{feature.geometry.type}"
+                f"{feature_class}"
             )
 
 

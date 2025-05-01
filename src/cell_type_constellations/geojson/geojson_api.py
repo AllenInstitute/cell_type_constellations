@@ -76,7 +76,10 @@ def convert_constellation_to_geojson(
                     geometry=geojson_utils.convert_hull_to_geojson(
                         hull=hull,
                         discrete_color_map=discrete_color_map
-                    )
+                    ),
+                    properties={
+                       "class": "hull"
+                    }
                 )
             )
 
