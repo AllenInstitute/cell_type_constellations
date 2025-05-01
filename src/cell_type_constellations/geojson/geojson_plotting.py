@@ -8,6 +8,7 @@ import cell_type_constellations.utils.geometry_utils as geometry_utils
 def plot_geojson_constellation(
         geojson_path,
         axis,
+        plot_hulls=True,
         zorder=0):
     """
     Plot a constellation plot from a geojson file.
@@ -20,6 +21,9 @@ def plot_geojson_constellation(
     axis:
         the matplotlib axis on which to plot the constellation
         plot
+    plot_hulls:
+        boolean indicating whether or not to plot the hulls
+        containing the cell types in UMAP space
     zorder:
         zorder of the constellation plot's lowest layer
     """
@@ -47,12 +51,13 @@ def plot_geojson_constellation(
                 fill=True
             )
         elif feature.geometry.type == 'MultiPolygon':
-            plot_geojson_multipolygon(
-                axis=axis,
-                multi_polygon=feature.geometry,
-                zorder=hull_zorder,
-                fill=False
-            )
+            if plot_hulls:
+                plot_geojson_multipolygon(
+                    axis=axis,
+                    multi_polygon=feature.geometry,
+                    zorder=hull_zorder,
+                    fill=False
+                )
         else:
             raise NotImplementedError(
                 "Unclear how to plot feature of type "
