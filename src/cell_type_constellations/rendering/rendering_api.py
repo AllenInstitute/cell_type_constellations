@@ -2,6 +2,7 @@ import h5py
 import json
 import pathlib
 
+import cell_type_constellations.utils.str_utils as str_utils
 import cell_type_constellations.app.html_utils as html_utils
 import cell_type_constellations.visual_elements.centroid as centroid
 import cell_type_constellations.visual_elements.connection as connection
@@ -20,62 +21,22 @@ def constellation_svg_from_hdf5(
         fill_hulls,
         render_metadata=True):
 
-    if hull_level == 'NA':
-        hull_level = None
+    data_packet = load_constellation_data_from_hdf5(
+        hdf5_path=hdf5_path,
+        centroid_level=centroid_level,
+        hull_level=hull_level,
+        connection_coords=connection_coords
+    )
 
-    hull_list = None
-    hull_level_list = []
-
-    with h5py.File(hdf5_path, 'r') as src:
-        fov = fov_utils.FieldOfView.from_hdf5_handle(
-            hdf5_handle=src,
-            group_path='fov')
-
-        centroid_list = centroid.read_pixel_centroids_from_hdf5_handle(
-            hdf5_handle=src,
-            group_path=f'{centroid_level}/centroids')
-
-        connection_list = connection.read_pixel_connections_from_hdf5_handle(
-            hdf5_handle=src,
-            group_path=f'{centroid_level}/connections/{connection_coords}'
-        )
-
-        discrete_field_list = json.loads(
-            src['discrete_fields'][()].decode('utf-8')
-        )
-
-        continuous_field_list = json.loads(
-            src['continuous_fields'][()].decode('utf-8')
-        )
-
-        discrete_color_map = json.loads(
-           src['discrete_color_map'][()].decode('utf-8')
-        )
-
-        connection_coords_list = [
-            k for k in src[f'{discrete_field_list[0]}/connections'].keys()
-        ]
-
-        if 'hulls' in src.keys():
-            hull_level_list = [
-                level
-                for level in discrete_field_list
-                if level in src['hulls'].keys()
-            ]
-            if hull_level is not None:
-                hull_list = []
-                for type_value in src['hulls'][hull_level].keys():
-                    hull = hull_classes.PixelSpaceHull.from_hdf5_handle(
-                            hdf5_handle=src,
-                            group_path=f'hulls/{hull_level}/{type_value}'
-                        )
-
-                    # somewhat irresponsible patching of hull
-                    # to contain type_field and type_value
-                    hull.type_field = hull_level
-                    hull.type_value = type_value
-
-                    hull_list.append(hull)
+    fov = data_packet["fov"]
+    centroid_list = data_packet["centroid_list"]
+    connection_list = data_packet["connection_list"]
+    hull_list = data_packet["hull_list"]
+    discrete_color_map = data_packet["discrete_color_map"]
+    connection_coords_list = data_packet["connection_coords_list"]
+    hull_level_list = data_packet["hull_level_list"]
+    continuous_field_list = data_packet["continuous_field_list"]
+    discrete_field_list = data_packet["discrete_field_list"]
 
     try:
         html = rendering_utils.render_svg(
@@ -112,6 +73,92 @@ def constellation_svg_from_hdf5(
             connection_coords_list=connection_coords_list)
 
     return html
+
+
+def load_constellation_data_from_hdf5(
+        hdf5_path,
+        centroid_level,
+        hull_level,
+        connection_coords,
+        convert_to_embedding=False):
+
+    if hull_level == 'NA':
+        hull_level = None
+
+    hull_list = None
+    hull_level_list = []
+
+    with h5py.File(hdf5_path, 'r') as src:
+        fov = fov_utils.FieldOfView.from_hdf5_handle(
+            hdf5_handle=src,
+            group_path='fov')
+
+        centroid_list = centroid.read_pixel_centroids_from_hdf5_handle(
+            hdf5_handle=src,
+            group_path=f'{centroid_level}/centroids',
+            fov=fov,
+            convert_to_embedding=convert_to_embedding)
+
+        connection_list = connection.read_pixel_connections_from_hdf5_handle(
+            hdf5_handle=src,
+            group_path=f'{centroid_level}/connections/{connection_coords}',
+            fov=fov,
+            convert_to_embedding=convert_to_embedding
+        )
+
+        discrete_field_list = json.loads(
+            src['discrete_fields'][()].decode('utf-8')
+        )
+
+        continuous_field_list = json.loads(
+            src['continuous_fields'][()].decode('utf-8')
+        )
+
+        discrete_color_map = json.loads(
+           src['discrete_color_map'][()].decode('utf-8')
+        )
+
+        connection_coords_list = [
+            k for k in src[f'{discrete_field_list[0]}/connections'].keys()
+        ]
+
+        if 'hulls' in src.keys():
+            hull_level_list = [
+                level
+                for level in discrete_field_list
+                if level in src['hulls'].keys()
+            ]
+            if hull_level is not None:
+                hull_list = []
+                for type_value in src['hulls'][hull_level].keys():
+                    group_path=f'hulls/{hull_level}/{type_value}'
+                    hull = hull_classes.PixelSpaceHull.from_hdf5_handle(
+                            hdf5_handle=src,
+                            group_path=group_path,
+                            fov=fov,
+                            convert_to_embedding=convert_to_embedding
+                        )
+
+                    # somewhat irresponsible patching of hull
+                    # to contain type_field and type_value
+                    hull.type_field = hull_level
+                    hull.type_value = str_utils.desanitize_taxon_name(
+                        type_value
+                    )
+
+                    hull_list.append(hull)
+
+    return {
+        "discrete_color_map": discrete_color_map,
+        "centroid_list": centroid_list,
+        "connection_list": connection_list,
+        "hull_list": hull_list,
+        "connection_coords_list": connection_coords_list,
+        "continuous_field_list": continuous_field_list,
+        "discrete_field_list": discrete_field_list,
+        "hull_level_list": hull_level_list,
+        "fov": fov
+    }
 
 
 def get_constellation_control_code(

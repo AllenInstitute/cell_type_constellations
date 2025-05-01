@@ -16,6 +16,7 @@ from cell_type_mapper.utils.multiprocessing_utils import (
     winnow_process_list
 )
 
+import cell_type_constellations.utils.str_utils as str_utils
 import cell_type_constellations.utils.geometry_utils as geometry_utils
 import cell_type_constellations.hulls.classes as hull_classes
 import cell_type_constellations.hulls.leaf_utils as leaf_utils
@@ -212,7 +213,8 @@ def create_and_serialize_pixel_hull_list(
                                               hull_list):
                 type_field = pair[0]
                 type_value = pair[1]
-                group_path = f'hulls/{type_field}/{type_value}'
+                safe_type_value = str_utils.sanitize_taxon_name(type_value)
+                group_path = f'hulls/{type_field}/{safe_type_value}'
                 pixel_space_hull.to_hdf5_handle(
                     hdf5_handle=dst,
                     group_path=group_path

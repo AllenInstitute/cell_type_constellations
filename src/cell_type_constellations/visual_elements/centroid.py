@@ -137,12 +137,37 @@ def embedding_centroid_lookup_from_h5ad(
     coords = coord_utils.get_coords_from_h5ad(
         h5ad_path=h5ad_path,
         coord_key=coord_key)
+
+    return embedding_centroid_lookup_from_coords(
+        cell_set=cell_set,
+        coords=coords
+    )
+
+
+def embedding_centroid_lookup_from_coords(
+        cell_set,
+        coords):
+    """
+    Instantiate a lookup table of EmbeddingSpaceCentroids from a
+    cell set and an array of embedding coordinates
+
+    Parameters
+    ----------
+    cell_set:
+        the CellSet defining how cells are grouped
+    coords:
+        an (n_cells, 2) array of embedding coordinates corresponding
+        to the cells in cell_set
+    color_map:
+        mapping from type_field, type_value to colors
+    """
     if coords.shape[1] != 2:
         raise RuntimeError(
             "Embedding coords for centroids must be "
             "2-dimensional; you gave embedding of shape "
             f"{coords.shape}"
         )
+
 
     if coords.shape[0] != cell_set.n_cells:
         raise RuntimeError(
@@ -315,7 +340,9 @@ def write_pixel_centroids_to_hdf5(
 
 def read_pixel_centroids_from_hdf5(
         hdf5_path,
-        group_path):
+        group_path,
+        fov,
+        convert_to_embedding=False):
     """
     Read a list of PixelSpaceCentroids from a specific
     group in an HDF5 file. Return the list of centroids.
@@ -324,18 +351,51 @@ def read_pixel_centroids_from_hdf5(
     with h5py.File(hdf5_path, 'r') as src:
         result = read_pixel_centroids_from_hdf5_handle(
             hdf5_handle=src,
-            group_path=group_path)
+            group_path=group_path,
+            fov=fov,
+            convert_to_embedding=convert_to_embedding)
     return result
 
 
 def read_pixel_centroids_from_hdf5_handle(
         hdf5_handle,
-        group_path):
+        group_path,
+        fov,
+        convert_to_embedding=False):
 
     src_grp = hdf5_handle[group_path]
     pixel_x_arr = src_grp['x'][()]
     pixel_y_arr = src_grp['y'][()]
     radius_arr = src_grp['r'][()]
+
+    if convert_to_embedding:
+        # find a point on each circle that is at the edge
+        # of the circle; transform it to embedding points
+        # to find the new radii of the circle
+        top_pt = np.vstack(
+            [pixel_x_arr,
+             pixel_y_arr+radius_arr]
+        ).transpose()
+        top_pt = fov.transform_to_embedding_coordinates(
+            top_pt
+        )
+
+        coords = np.vstack(
+           [pixel_x_arr,
+            pixel_y_arr]
+        ).transpose()
+        coords = fov.transform_to_embedding_coordinates(
+            coords
+        )
+        pixel_x_arr = coords[:, 0]
+        pixel_y_arr = coords[:, 1]
+
+        radius_arr = np.sqrt(
+            ((top_pt-coords)**2).sum(axis=1)
+        )
+
+        del coords
+
     n_cells_arr = src_grp['n_cells'][()]
     label_arr = [
         label.decode('utf-8')

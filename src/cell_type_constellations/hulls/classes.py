@@ -131,12 +131,16 @@ class PixelSpaceHull(object):
     def from_hdf5(
             cls,
             hdf5_path,
-            group_path):
+            group_path,
+            fov=None,
+            convert_to_embedding=False):
 
         with h5py.File(hdf5_path, 'r') as src:
             result = cls.from_hdf5_handle(
                 hdf5_handle=src,
-                group_path=group_path
+                group_path=group_path,
+                fov=fov,
+                convert_to_embedding=convert_to_embedding
             )
         return result
 
@@ -144,13 +148,20 @@ class PixelSpaceHull(object):
     def from_hdf5_handle(
             cls,
             hdf5_handle,
-            group_path):
+            group_path,
+            fov=None,
+            convert_to_embedding=False):
 
         src_grp = hdf5_handle[group_path]
         compound_path_points = []
         for key in src_grp.keys():
+            pts = src_grp[key][()]
+            if convert_to_embedding:
+                pts = fov.transform_to_embedding_coordinates(
+                    pts
+                )
             compound_path_points.append(
-                src_grp[key][()]
+                pts
             )
         return cls(path_points=compound_path_points)
 
