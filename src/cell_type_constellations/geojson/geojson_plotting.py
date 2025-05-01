@@ -222,7 +222,7 @@ def plot_geojson_polygon_coords(
             x_arr,
             y_arr,
             c=color,
-            linewidth=2,
+            linewidth=1,
             zorder=zorder
         )
     else:
@@ -230,7 +230,7 @@ def plot_geojson_polygon_coords(
             outer[:, 0],
             outer[:, 1],
             color=color,
-            linewidth=2,
+            linewidth=1,
             zorder=zorder
         )
         if inner is not None:
@@ -238,6 +238,6 @@ def plot_geojson_polygon_coords(
                 inner[:, 0],
                 inner[:, 1],
                 color=color,
-                linewidth=2,
+                linewidth=1,
                 zorder=zorder
             )
