@@ -196,6 +196,7 @@ def get_constellation_control_code(
     html += html_utils.html_front_matter_n_columns(
         n_columns=6)
 
+    html += f"""<p>{taxonomy_name}</p>"""
     html += """<form action="constellation_plot" method="GET">\n"""
     html += f"""<input type="hidden" value="{taxonomy_name}" name="taxonomy_name">\n"""  # noqa: E501
     for i_column, field_id in enumerate(
