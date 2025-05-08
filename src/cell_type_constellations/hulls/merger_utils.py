@@ -214,6 +214,16 @@ def get_pixellized_test_pts_from_type(
     grid = np.zeros((nx, ny), dtype=bool)
     invalid_x = np.round((invalid_pts[:, 0]-xmin)/resx).astype(int)
     invalid_y = np.round((invalid_pts[:, 1]-ymin)/resy).astype(int)
+
+    # just mask indexes to fit in grid
+    # (hacky; no idea why this is necessary)
+    xy_mask = np.logical_and(
+        invalid_x<nx,
+        invalid_y<ny
+    )
+    invalid_x = invalid_x[xy_mask]
+    invalid_y = invalid_y[xy_mask]
+
     grid[invalid_x, invalid_y] = True
 
     # if there is a valid point in that pixel, do not add it
