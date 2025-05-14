@@ -21,8 +21,9 @@ def constellation_svg_from_hdf5(
         connection_coords,
         color_by,
         fill_hulls,
-        render_metadata=True,
-        scatter_plots=False):
+        render_metadata=True):
+
+    scatter_plots = True
 
     data_packet = load_constellation_data_from_hdf5(
         hdf5_path=hdf5_path,
@@ -48,7 +49,7 @@ def constellation_svg_from_hdf5(
 
         html += get_scatterplot(
             hdf5_path=hdf5_path,
-            level=centroid_level,
+            level=hull_level,
             fov=fov
         )
 
@@ -59,8 +60,8 @@ def constellation_svg_from_hdf5(
            color_by=color_by,
            centroid_list=centroid_list,
            connection_list=connection_list,
-           hull_list=hull_list,
-           fill_hulls=fill_hulls,
+           hull_list=[],
+           fill_hulls=False,
            show_centroid_labels=show_centroid_labels)
 
     except rendering_utils.CannotColorByError:
@@ -345,6 +346,8 @@ def get_scatterplot(
     """
     Return HTML for scatter plot image
     """
+    if level is None:
+        level = "None"
 
     with h5py.File(hdf5_path, "r") as src:
         if "scatter_plots" not in src.keys():

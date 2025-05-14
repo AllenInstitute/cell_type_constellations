@@ -104,8 +104,7 @@ class Visualizer(object):
                 color_by=color_by,
                 fill_hulls=fill_hulls,
                 connection_coords=connection_coords,
-                show_centroid_labels=show_centroid_labels,
-                scatter_plots=True)
+                show_centroid_labels=show_centroid_labels)
 
         return html
 
