@@ -4,6 +4,9 @@ Scripts to create the UMAP scatter plot in temporary files
 
 import matplotlib.figure
 import numpy as np
+import PIL.ImageColor
+
+from cell_type_mapper.utils.utils import mkstemp_clean
 
 
 def plot_embedding(
@@ -31,6 +34,7 @@ def plot_embedding(
     dst_path:
         path to file where scatter plot will be saved
     """
+    alpha = 0.75
     rng = np.random.default_rng(771812311)
     gray = '#dddddd'
     n_cells = embedding_coords.shape[0]
@@ -45,6 +49,22 @@ def plot_embedding(
             discrete_color_map[color_by][value]
             for value in type_value_array
         ]
+        color_array = []
+        faded_color = dict()
+        for value in type_value_array:
+            if value not in faded_color:
+                orig = PIL.ImageColor.getcolor(
+                    discrete_color_map[color_by][value],
+                    'RGB'
+                )
+                orig = [o/255.0 for o in orig]
+                new_color = [
+                    alpha*o+(1.0-alpha)
+                    for o in orig
+                ]
+                faded_color[value] = tuple(new_color)
+            color_array.append(faded_color[value])
+
     color_array = np.array(color_array)
 
     embedding_coords = fov.transform_to_pixel_coordinates(
