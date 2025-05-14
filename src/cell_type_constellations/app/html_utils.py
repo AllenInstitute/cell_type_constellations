@@ -86,3 +86,32 @@ def end_of_page():
     html += html_end_matter()
     html += "</p>"
     return html
+
+
+def overlay_style():
+    """
+    Copied from
+    https://stackoverflow.com/questions/43806515/position-svg-elements-over-an-image
+    """
+    html = """
+    <style>
+        .img-overlay-wrap {
+          position: relative;
+          display: inline-block; /* <= shrinks container to image size */
+        }
+
+        .img-overlay-wrap img { /* <= optional, for responsiveness */
+           display: block;
+           max-width: 100%;
+           height: auto;
+        }
+
+        .img-overlay-wrap svg {
+          position: absolute;
+          top: 0;
+          left: 0;
+        }
+
+    </style>
+    """
+    return html
