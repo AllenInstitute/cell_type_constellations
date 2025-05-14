@@ -3,7 +3,7 @@ import cherrypy
 import pathlib
 
 import cell_type_constellations
-
+import cell_type_constellations.app.html_utils as html_utils
 import cell_type_constellations.rendering.rendering_api as rendering_api
 
 
@@ -90,7 +90,8 @@ class Visualizer(object):
 
         config = self.constellation_plot_config[taxonomy_name]
 
-        hdf5_path = config['path']
+        hdf5_path = pathlib.Path(config['path'])
+
         if default:
             centroid_level = config['centroid_level']
             color_by = config['color_by']
