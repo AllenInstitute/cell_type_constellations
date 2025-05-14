@@ -230,7 +230,10 @@ def get_constellation_control_code(
 
         default_value = default_lookup[field_id]
 
-        button_name = field_id.replace('_', ' ')
+        if field_id == 'hull_level':
+            button_name = 'color UMAP by'
+        else:
+            button_name = field_id.replace('_', ' ')
 
         html += """<div class="column">"""
         html += f"""<fieldset id="{field_id}">\n"""
