@@ -102,8 +102,6 @@ def overlay_style():
 
         .img-overlay-wrap img { /* <= optional, for responsiveness */
            display: block;
-           max-width: 100%;
-           height: auto;
         }
 
         .img-overlay-wrap svg {
