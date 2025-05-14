@@ -20,7 +20,7 @@ def constellation_svg_from_hdf5(
         hull_level,
         connection_coords,
         color_by,
-        fill_hulls,
+        fill_hulls=False,
         render_metadata=True):
 
 
@@ -258,8 +258,7 @@ def get_constellation_control_code(
 
         html += """</div>\n"""
 
-    for field_id, current in (("fill_hulls", fill_hulls),
-                              ("show_centroid_labels", show_centroid_labels)):
+    for field_id, current in (("show_centroid_labels", show_centroid_labels),):
 
         button_name = field_id.replace("_", " ")
         if field_id == "show_centroid_labels":

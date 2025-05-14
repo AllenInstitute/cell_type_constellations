@@ -74,7 +74,7 @@ class Visualizer(object):
             hull_level=None,
             connection_coords=None,
             default=False,
-            fill_hulls='false',
+            fill_hulls=False,
             show_centroid_labels='true'):
 
         if fill_hulls == 'true':
