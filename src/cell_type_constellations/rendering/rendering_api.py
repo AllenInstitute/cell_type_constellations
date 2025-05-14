@@ -23,7 +23,11 @@ def constellation_svg_from_hdf5(
         fill_hulls,
         render_metadata=True):
 
-    scatter_plots = True
+
+    scatter_plots = False
+    with h5py.File(hdf5_path, 'r') as src:
+        if 'scatter_plots' in src.keys():
+            scatter_plots = True
 
     data_packet = load_constellation_data_from_hdf5(
         hdf5_path=hdf5_path,
