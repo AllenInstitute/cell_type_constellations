@@ -1,7 +1,9 @@
+import base64
 import h5py
 import json
 import pathlib
 
+import cell_type_constellations
 import cell_type_constellations.utils.str_utils as str_utils
 import cell_type_constellations.app.html_utils as html_utils
 import cell_type_constellations.visual_elements.centroid as centroid
@@ -19,7 +21,8 @@ def constellation_svg_from_hdf5(
         connection_coords,
         color_by,
         fill_hulls,
-        render_metadata=True):
+        render_metadata=True,
+        scatter_plots=False):
 
     data_packet = load_constellation_data_from_hdf5(
         hdf5_path=hdf5_path,
@@ -38,8 +41,19 @@ def constellation_svg_from_hdf5(
     continuous_field_list = data_packet["continuous_field_list"]
     discrete_field_list = data_packet["discrete_field_list"]
 
+    html = ""
+    if scatter_plots:
+        html += html_utils.overlay_style()
+        html += """<div class="img-overlay-wrap">"""
+
+        html += get_scatterplot(
+            hdf5_path=hdf5_path,
+            level=centroid_level,
+            fov=fov
+        )
+
     try:
-        html = rendering_utils.render_svg(
+        html += rendering_utils.render_svg(
            fov=fov,
            color_map=discrete_color_map,
            color_by=color_by,
@@ -48,6 +62,7 @@ def constellation_svg_from_hdf5(
            hull_list=hull_list,
            fill_hulls=fill_hulls,
            show_centroid_labels=show_centroid_labels)
+
     except rendering_utils.CannotColorByError:
         html = f"""
         <p>
@@ -55,6 +70,9 @@ def constellation_svg_from_hdf5(
         perhaps {centroid_level} is a 'parent level' of {color_by}?
         </p>
         """
+
+    if scatter_plots:
+        html += "</div>"
 
     if render_metadata:
         taxonomy_name = get_taxonomy_name(hdf5_path)
@@ -318,3 +336,25 @@ def get_constellation_plot_config(
 def get_taxonomy_name(hdf5_path):
     file_name = pathlib.Path(hdf5_path).name
     return f'{file_name}'
+
+
+def get_scatterplot(
+        hdf5_path,
+        level,
+        fov):
+    """
+    Return HTML for scatter plot image
+    """
+
+    with h5py.File(hdf5_path, "r") as src:
+        if "scatter_plots" not in src.keys():
+            return ""
+        if level not in src["scatter_plots"]:
+            level = "None"
+        data = src[f"scatter_plots/{level}"][()].tobytes()
+        data = str(base64.b64encode(data))[2:-1]
+
+    html = f"""
+    <img src="data:image/png;base64,{data}" width="{fov.width}px" height="{fov.height}.px">
+    """
+    return html

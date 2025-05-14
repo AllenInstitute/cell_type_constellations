@@ -3,7 +3,6 @@ import cherrypy
 import pathlib
 
 import cell_type_constellations
-import cell_type_constellations.app.html_utils as html_utils
 import cell_type_constellations.rendering.rendering_api as rendering_api
 
 
@@ -105,7 +104,8 @@ class Visualizer(object):
                 color_by=color_by,
                 fill_hulls=fill_hulls,
                 connection_coords=connection_coords,
-                show_centroid_labels=show_centroid_labels)
+                show_centroid_labels=show_centroid_labels,
+                scatter_plots=True)
 
         return html
 
