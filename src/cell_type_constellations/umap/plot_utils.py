@@ -92,7 +92,7 @@ def plot_embedding(
         c=color_array,
         s=1
     )
-    axis.axis('off')
+    #axis.axis('off')
     axis.set_xlim((0, fov.width))
     axis.set_ylim((0, fov.height))
     fig.tight_layout()
