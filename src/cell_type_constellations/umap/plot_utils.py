@@ -76,6 +76,9 @@ def plot_embedding(
     xx = embedding_coords[:, 0]
     yy = embedding_coords[:, 1]
 
+    # convert to array coordinates for matplotlib (?)
+    yy = fov.height - yy
+
     idx = np.arange(n_cells, dtype=int)
     rng.shuffle(idx)
     xx = xx[idx]
