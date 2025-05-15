@@ -17,22 +17,23 @@ def constellation_svg_from_hdf5(
         hdf5_path,
         centroid_level,
         show_centroid_labels,
-        hull_level,
         connection_coords,
         color_by,
-        fill_hulls=False,
-        render_metadata=True):
+        render_metadata=True,
+        scatter_plot_level=None):
 
 
     scatter_plots = False
+    scatter_plot_level_list = []
     with h5py.File(hdf5_path, 'r') as src:
         if 'scatter_plots' in src.keys():
             scatter_plots = True
+            scatter_plot_level_list = list(src['scatter_plots'].keys())
 
     data_packet = load_constellation_data_from_hdf5(
         hdf5_path=hdf5_path,
         centroid_level=centroid_level,
-        hull_level=hull_level,
+        hull_level=None,
         connection_coords=connection_coords
     )
 
@@ -42,7 +43,6 @@ def constellation_svg_from_hdf5(
     hull_list = data_packet["hull_list"]
     discrete_color_map = data_packet["discrete_color_map"]
     connection_coords_list = data_packet["connection_coords_list"]
-    hull_level_list = data_packet["hull_level_list"]
     continuous_field_list = data_packet["continuous_field_list"]
     discrete_field_list = data_packet["discrete_field_list"]
 
@@ -53,7 +53,7 @@ def constellation_svg_from_hdf5(
 
         html += get_scatterplot(
             hdf5_path=hdf5_path,
-            level=hull_level,
+            level=scatter_plot_level,
             fov=fov
         )
 
@@ -87,12 +87,11 @@ def constellation_svg_from_hdf5(
             centroid_level=centroid_level,
             color_by=color_by,
             show_centroid_labels=show_centroid_labels,
-            hull_level=hull_level,
+            scatter_plot_level=scatter_plot_level,
             connection_coords=connection_coords,
-            fill_hulls=fill_hulls,
             discrete_field_list=discrete_field_list,
             continuous_field_list=continuous_field_list,
-            hull_level_list=hull_level_list,
+            scatter_plot_level_list=scatter_plot_level_list,
             connection_coords_list=connection_coords_list)
 
     return html
@@ -188,21 +187,20 @@ def get_constellation_control_code(
         taxonomy_name,
         centroid_level,
         show_centroid_labels,
-        hull_level,
+        scatter_plot_level,
         color_by,
         connection_coords,
-        fill_hulls,
         discrete_field_list,
         continuous_field_list,
-        hull_level_list,
+        scatter_plot_level_list,
         connection_coords_list):
 
-    if hull_level is None:
-        hull_level = 'NA'
+    if scatter_plot_level is None:
+        scatter_plot_level = 'NA'
 
     default_lookup = {
         'centroid_level': centroid_level,
-        'hull_level': hull_level,
+        'scatter_plot_level': scatter_plot_level,
         'color_by': color_by,
         'connection_coords': connection_coords
     }
@@ -210,7 +208,7 @@ def get_constellation_control_code(
     level_list_lookup = {
         'centroid_level': discrete_field_list,
         'color_by': discrete_field_list + continuous_field_list,
-        'hull_level': hull_level_list,
+        'scatter_plot_level': scatter_plot_level_list,
         'connection_coords': connection_coords_list
     }
 
@@ -226,11 +224,11 @@ def get_constellation_control_code(
                                 ("centroid_level",
                                  "color_by",
                                  "connection_coords",
-                                 "hull_level")):
+                                 "scatter_plot_level")):
 
         default_value = default_lookup[field_id]
 
-        if field_id == 'hull_level':
+        if field_id == 'scatter_plot_level':
             button_name = 'color UMAP by'
         else:
             button_name = field_id.replace('_', ' ')
@@ -241,7 +239,7 @@ def get_constellation_control_code(
 
         button_values = level_list_lookup[field_id]
 
-        if field_id == 'hull_level':
+        if field_id == 'scatter_plot_level':
             button_values.append('NA')
 
         for level in button_values:
@@ -332,7 +330,7 @@ def get_constellation_plot_config(
                 'path': file_path,
                 'centroid_level': discrete_fields[-2],
                 'color_by': discrete_fields[-2],
-                'hull_level': None,
+                'scatter_plot_level': None,
                 'connection_coords': connection_coords
             }
 

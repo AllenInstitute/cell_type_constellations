@@ -36,7 +36,7 @@ def plot_embedding(
     dst_path:
         path to file where scatter plot will be saved
     """
-    alpha = 0.75
+    alpha = 0.5
     rng = np.random.default_rng(771812311)
     gray = '#dddddd'
     n_cells = embedding_coords.shape[0]

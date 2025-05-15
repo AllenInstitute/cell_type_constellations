@@ -71,16 +71,10 @@ class Visualizer(object):
             taxonomy_name=None,
             centroid_level=None,
             color_by=None,
-            hull_level=None,
+            scatter_plot_level=None,
             connection_coords=None,
             default=False,
-            fill_hulls=False,
             show_centroid_labels='true'):
-
-        if fill_hulls == 'true':
-            fill_hulls = True
-        else:
-            fill_hulls = False
 
         if show_centroid_labels == 'true':
             show_centroid_labels = True
@@ -94,15 +88,14 @@ class Visualizer(object):
         if default:
             centroid_level = config['centroid_level']
             color_by = config['color_by']
-            hull_level = config['hull_level']
+            scatter_plot_level = config['scatter_plot_level']
             connection_coords = config['connection_coords']
 
         html = rendering_api.constellation_svg_from_hdf5(
                 hdf5_path=hdf5_path,
                 centroid_level=centroid_level,
-                hull_level=hull_level,
+                scatter_plot_level=scatter_plot_level,
                 color_by=color_by,
-                fill_hulls=fill_hulls,
                 connection_coords=connection_coords,
                 show_centroid_labels=show_centroid_labels)
 
