@@ -1,7 +1,9 @@
+import base64
 import h5py
 import json
 import pathlib
 
+import cell_type_constellations
 import cell_type_constellations.utils.str_utils as str_utils
 import cell_type_constellations.app.html_utils as html_utils
 import cell_type_constellations.visual_elements.centroid as centroid
@@ -15,16 +17,26 @@ def constellation_svg_from_hdf5(
         hdf5_path,
         centroid_level,
         show_centroid_labels,
-        hull_level,
         connection_coords,
         color_by,
-        fill_hulls,
-        render_metadata=True):
+        render_metadata=True,
+        scatter_plot_level=None):
+
+
+    scatter_plots = False
+    scatter_plot_level_list = []
+    with h5py.File(hdf5_path, 'r') as src:
+        if 'scatter_plots' in src.keys():
+            scatter_plots = True
+            raw_scatter_plot_level_set = set(src['scatter_plots'].keys())
+
+    if scatter_plot_level is None or scatter_plot_level == 'NA':
+        scatter_plots = False
 
     data_packet = load_constellation_data_from_hdf5(
         hdf5_path=hdf5_path,
         centroid_level=centroid_level,
-        hull_level=hull_level,
+        hull_level=None,
         connection_coords=connection_coords
     )
 
@@ -34,20 +46,38 @@ def constellation_svg_from_hdf5(
     hull_list = data_packet["hull_list"]
     discrete_color_map = data_packet["discrete_color_map"]
     connection_coords_list = data_packet["connection_coords_list"]
-    hull_level_list = data_packet["hull_level_list"]
     continuous_field_list = data_packet["continuous_field_list"]
     discrete_field_list = data_packet["discrete_field_list"]
 
+    scatter_plot_level_list = [
+        d for d in discrete_field_list if d in raw_scatter_plot_level_set
+    ]
+    scatter_plot_level_list += [
+        r for r in raw_scatter_plot_level_set if r not in scatter_plot_level_list
+    ]
+
+    html = ""
+    if scatter_plots:
+        html += html_utils.overlay_style()
+        html += """<div class="img-overlay-wrap">"""
+
+        html += get_scatterplot(
+            hdf5_path=hdf5_path,
+            level=scatter_plot_level,
+            fov=fov
+        )
+
     try:
-        html = rendering_utils.render_svg(
+        html += rendering_utils.render_svg(
            fov=fov,
            color_map=discrete_color_map,
            color_by=color_by,
            centroid_list=centroid_list,
            connection_list=connection_list,
-           hull_list=hull_list,
-           fill_hulls=fill_hulls,
+           hull_list=[],
+           fill_hulls=False,
            show_centroid_labels=show_centroid_labels)
+
     except rendering_utils.CannotColorByError:
         html = f"""
         <p>
@@ -55,6 +85,9 @@ def constellation_svg_from_hdf5(
         perhaps {centroid_level} is a 'parent level' of {color_by}?
         </p>
         """
+
+    if scatter_plots:
+        html += "</div>"
 
     if render_metadata:
         taxonomy_name = get_taxonomy_name(hdf5_path)
@@ -64,12 +97,11 @@ def constellation_svg_from_hdf5(
             centroid_level=centroid_level,
             color_by=color_by,
             show_centroid_labels=show_centroid_labels,
-            hull_level=hull_level,
+            scatter_plot_level=scatter_plot_level,
             connection_coords=connection_coords,
-            fill_hulls=fill_hulls,
             discrete_field_list=discrete_field_list,
             continuous_field_list=continuous_field_list,
-            hull_level_list=hull_level_list,
+            scatter_plot_level_list=scatter_plot_level_list,
             connection_coords_list=connection_coords_list)
 
     return html
@@ -165,21 +197,20 @@ def get_constellation_control_code(
         taxonomy_name,
         centroid_level,
         show_centroid_labels,
-        hull_level,
+        scatter_plot_level,
         color_by,
         connection_coords,
-        fill_hulls,
         discrete_field_list,
         continuous_field_list,
-        hull_level_list,
+        scatter_plot_level_list,
         connection_coords_list):
 
-    if hull_level is None:
-        hull_level = 'NA'
+    if scatter_plot_level is None:
+        scatter_plot_level = 'NA'
 
     default_lookup = {
         'centroid_level': centroid_level,
-        'hull_level': hull_level,
+        'scatter_plot_level': scatter_plot_level,
         'color_by': color_by,
         'connection_coords': connection_coords
     }
@@ -187,7 +218,7 @@ def get_constellation_control_code(
     level_list_lookup = {
         'centroid_level': discrete_field_list,
         'color_by': discrete_field_list + continuous_field_list,
-        'hull_level': hull_level_list,
+        'scatter_plot_level': scatter_plot_level_list,
         'connection_coords': connection_coords_list
     }
 
@@ -203,11 +234,16 @@ def get_constellation_control_code(
                                 ("centroid_level",
                                  "color_by",
                                  "connection_coords",
-                                 "hull_level")):
+                                 "scatter_plot_level")):
 
         default_value = default_lookup[field_id]
 
-        button_name = field_id.replace('_', ' ')
+        if field_id == 'scatter_plot_level':
+            button_name = 'color UMAP by'
+        elif field_id == 'color_by':
+            button_name = 'color centroids by'
+        else:
+            button_name = field_id.replace('_', ' ')
 
         html += """<div class="column">"""
         html += f"""<fieldset id="{field_id}">\n"""
@@ -215,7 +251,8 @@ def get_constellation_control_code(
 
         button_values = level_list_lookup[field_id]
 
-        if field_id == 'hull_level':
+        if field_id == 'scatter_plot_level':
+            button_values.append('gray')
             button_values.append('NA')
 
         for level in button_values:
@@ -235,8 +272,7 @@ def get_constellation_control_code(
 
         html += """</div>\n"""
 
-    for field_id, current in (("fill_hulls", fill_hulls),
-                              ("show_centroid_labels", show_centroid_labels)):
+    for field_id, current in (("show_centroid_labels", show_centroid_labels),):
 
         button_name = field_id.replace("_", " ")
         if field_id == "show_centroid_labels":
@@ -307,7 +343,7 @@ def get_constellation_plot_config(
                 'path': file_path,
                 'centroid_level': discrete_fields[-2],
                 'color_by': discrete_fields[-2],
-                'hull_level': None,
+                'scatter_plot_level': 'gray',
                 'connection_coords': connection_coords
             }
 
@@ -318,3 +354,27 @@ def get_constellation_plot_config(
 def get_taxonomy_name(hdf5_path):
     file_name = pathlib.Path(hdf5_path).name
     return f'{file_name}'
+
+
+def get_scatterplot(
+        hdf5_path,
+        level,
+        fov):
+    """
+    Return HTML for scatter plot image
+    """
+    if level is None:
+        level = "None"
+
+    with h5py.File(hdf5_path, "r") as src:
+        if "scatter_plots" not in src.keys():
+            return ""
+        if level not in src["scatter_plots"]:
+            level = "None"
+        data = src[f"scatter_plots/{level}"][()].tobytes()
+        data = str(base64.b64encode(data))[2:-1]
+
+    html = f"""
+    <img src="data:image/png;base64,{data}" width="{fov.width}px" height="{fov.height}.px">
+    """
+    return html

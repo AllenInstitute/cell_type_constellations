@@ -36,6 +36,7 @@ import cell_type_constellations.utils.coord_utils as coord_utils
 import cell_type_constellations.visual_elements.centroid as centroid
 import cell_type_constellations.visual_elements.connection as connection
 import cell_type_constellations.hulls.creation as hull_creation
+import cell_type_constellations.umap.plot_utils as umap_utils
 
 
 def serialize_from_h5ad(
@@ -523,6 +524,15 @@ def serialize_data(
             data=json.dumps(discrete_color_map).encode('utf-8')
         )
 
+    umap_utils.add_scatterplot_to_hdf5(
+        cell_set=cell_set,
+        embedding_coords=visualization_coord_array,
+        fov=fov,
+        discrete_color_map=discrete_color_map,
+        hdf5_path=dst_path,
+        tmp_dir=tmp_dir
+    )
+
     for type_field in centroid_lookup:
         print(f'===serializing {type_field} connections===')
         centroid.write_pixel_centroids_to_hdf5(
@@ -558,8 +568,6 @@ def serialize_data(
         n_processors=n_processors,
         tmp_dir=tmp_dir
     )
-
-    print(f'SUCCESFULLY WROTE {dst_path}')
 
 
 def _validate_discrete_color_map(color_map, cell_set):

@@ -145,7 +145,7 @@ def render_centroid(
 
     result += (
         f"""        <circle r="{centroid.radius}px" cx="{centroid.pixel_x}px" cy="{centroid.pixel_y}px" """  # noqa: E501
-        f"""fill="{color}" stroke="transparent"/>\n"""
+        f"""fill="{color}" stroke="#bbbbbb" stroke-width="0.25"/>\n"""
     )
     result += """        <title>\n"""
     result += f"""{hover_msg}\n"""
