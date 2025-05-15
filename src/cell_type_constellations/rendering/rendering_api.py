@@ -28,7 +28,10 @@ def constellation_svg_from_hdf5(
     with h5py.File(hdf5_path, 'r') as src:
         if 'scatter_plots' in src.keys():
             scatter_plots = True
-            scatter_plot_level_list = list(src['scatter_plots'].keys())
+            raw_scatter_plot_level_set = set(src['scatter_plots'].keys())
+
+    if scatter_plot_level is None or scatter_plot_level == 'NA':
+        scatter_plots = False
 
     data_packet = load_constellation_data_from_hdf5(
         hdf5_path=hdf5_path,
@@ -45,6 +48,13 @@ def constellation_svg_from_hdf5(
     connection_coords_list = data_packet["connection_coords_list"]
     continuous_field_list = data_packet["continuous_field_list"]
     discrete_field_list = data_packet["discrete_field_list"]
+
+    scatter_plot_level_list = [
+        d for d in discrete_field_list if d in raw_scatter_plot_level_set
+    ]
+    scatter_plot_level_list += [
+        r for r in raw_scatter_plot_level_set if r not in scatter_plot_level_list
+    ]
 
     html = ""
     if scatter_plots:
@@ -230,6 +240,8 @@ def get_constellation_control_code(
 
         if field_id == 'scatter_plot_level':
             button_name = 'color UMAP by'
+        elif field_id == 'color_by':
+            button_name = 'color centroids by'
         else:
             button_name = field_id.replace('_', ' ')
 
@@ -240,6 +252,7 @@ def get_constellation_control_code(
         button_values = level_list_lookup[field_id]
 
         if field_id == 'scatter_plot_level':
+            button_values.append('gray')
             button_values.append('NA')
 
         for level in button_values:
@@ -330,7 +343,7 @@ def get_constellation_plot_config(
                 'path': file_path,
                 'centroid_level': discrete_fields[-2],
                 'color_by': discrete_fields[-2],
-                'scatter_plot_level': None,
+                'scatter_plot_level': 'gray',
                 'connection_coords': connection_coords
             }
 
