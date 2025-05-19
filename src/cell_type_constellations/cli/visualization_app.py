@@ -125,6 +125,9 @@ class Visualizer(object):
             scatter_plot_level,
             show_centroid_labels):
 
+        if scatter_plot_level == 'NA':
+            scatter_plot_level = None
+
         timestamp = file_utils.get_timestamp()
         tmp_file_path = pathlib.Path(
             file_utils.mkstemp_clean(
@@ -144,7 +147,8 @@ class Visualizer(object):
                 connection_coords=connection_coords,
                 zorder_base=1,
                 fill_hulls=False,
-                show_labels=show_centroid_labels=='True'
+                show_labels=show_centroid_labels=='True',
+                scatter_plot_level=scatter_plot_level
             )
 
             dst_file = io.BytesIO()

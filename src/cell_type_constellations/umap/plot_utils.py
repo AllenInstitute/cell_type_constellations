@@ -133,13 +133,17 @@ def add_scatterplot_to_hdf5(
                     f'scatter_plots/{str(color_by)}',
                     data=data
                 )
-                if color_by is not None:
-                    dst.create_dataset(
-                        f'raw_scatter_plots/{str(color_by)}',
-                        data=color_array
-                    )
         finally:
             png_path.unlink()
+
+    serialize_raw_color_lookup(
+        hdf5_path=hdf5_path,
+        cell_set=cell_set,
+        discrete_color_map=discrete_color_map,
+        color_by_list=color_by_list,
+        alpha=0.5)
+
+    print('SERIALIZED RAW SCATTER PLOTS')
 
 
 def get_color_array(
@@ -167,17 +171,71 @@ def get_color_array(
         faded_color = dict()
         for value in type_value_array:
             if value not in faded_color:
-                orig = PIL.ImageColor.getcolor(
-                    discrete_color_map[color_by][value],
-                    'RGB'
+                new_color = fade_rgb(
+                    rgb=discrete_color_map[color_by][value],
+                    alpha=alpha
                 )
-                orig = [o/255.0 for o in orig]
-                new_color = [
-                    alpha*o+(1.0-alpha)
-                    for o in orig
-                ]
                 faded_color[value] = tuple(new_color)
             color_array.append(faded_color[value])
 
     color_array = np.array(color_array)
     return color_array
+
+
+def fade_rgb(
+        rgb,
+        alpha):
+    orig = PIL.ImageColor.getcolor(
+        rgb,
+        'RGB'
+    )
+    orig = [o/255.0 for o in orig]
+    new_color = [
+        alpha*o+(1.0-alpha)
+        for o in orig
+    ]
+    return new_color
+
+
+def serialize_raw_color_lookup(
+        hdf5_path,
+        cell_set,
+        discrete_color_map,
+        color_by_list,
+        alpha):
+
+    print('SERIALIZING RAW SCATTER PLOTS')
+    n_cells = cell_set.n_cells
+    faded_color_lookup = []
+    level_to_color_assignment = dict()
+    for color_by in color_by_list:
+        if color_by is not None:
+            type_to_color_idx = dict()
+            type_value_array = cell_set.type_value_from_idx(
+                type_field=color_by,
+                idx_array=np.arange(n_cells, dtype=int)
+            )
+            type_set = set(type_value_array)
+            for type_val in type_set:
+                color = fade_rgb(
+                    rgb=discrete_color_map[color_by][type_val],
+                    alpha=alpha
+                )
+                color_idx = len(faded_color_lookup)
+                type_to_color_idx[type_val] = color_idx
+                faded_color_lookup.append(color)
+            arr = np.array(
+                [type_to_color_idx[v] for v in type_value_array]
+            )
+            level_to_color_assignment[color_by] = arr
+
+    with h5py.File(hdf5_path, 'a') as dst:
+        dst.create_dataset(
+            'raw_scatter_plots/color_lookup',
+            data=faded_color_lookup
+        )
+        for color_by in level_to_color_assignment:
+            dst.create_dataset(
+                f'raw_scatter_plots/{color_by}',
+                data=level_to_color_assignment[color_by]
+            )
