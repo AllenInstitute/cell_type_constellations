@@ -20,9 +20,8 @@ def constellation_svg_from_hdf5(
         connection_coords,
         color_by,
         render_metadata=True,
-        scatter_plot_level=None):
-
-
+        scatter_plot_level=None,
+        enable_download=False):
     scatter_plots = False
     scatter_plot_level_list = []
     with h5py.File(hdf5_path, 'r') as src:
@@ -105,7 +104,8 @@ def constellation_svg_from_hdf5(
             discrete_field_list=discrete_field_list,
             continuous_field_list=continuous_field_list,
             scatter_plot_level_list=scatter_plot_level_list,
-            connection_coords_list=connection_coords_list)
+            connection_coords_list=connection_coords_list,
+            enable_download=enable_download)
 
     return html
 
@@ -206,7 +206,8 @@ def get_constellation_control_code(
         discrete_field_list,
         continuous_field_list,
         scatter_plot_level_list,
-        connection_coords_list):
+        connection_coords_list,
+        enable_download=False):
 
     if scatter_plot_level is None:
         scatter_plot_level = 'NA'
@@ -228,17 +229,25 @@ def get_constellation_control_code(
     html = ""
 
     html += html_utils.html_front_matter_n_columns(
-        n_columns=6)
+        n_columns=5)
 
     html += f"""<p>{taxonomy_name}</p>"""
     html += """<form action="constellation_plot" method="GET">\n"""
     html += f"""<input type="hidden" value="{taxonomy_name}" name="taxonomy_name">\n"""  # noqa: E501
+    html += """<div class="row">"""
+    html += """<input type="submit" value="Reconfigure constellation plot">"""  # noqa: E501
+    html += """</div>"""
+    if enable_download:
+        html += """<div class="row">"""
+        html += "<a href='download'>Download image</a>"
+        html += """</div>"""
     for i_column, field_id in enumerate(
                                 ("centroid_level",
                                  "color_by",
                                  "connection_coords",
                                  "scatter_plot_level")):
 
+        html += """<div class="column">"""
         default_value = default_lookup[field_id]
 
         if field_id == 'scatter_plot_level':
@@ -248,7 +257,6 @@ def get_constellation_control_code(
         else:
             button_name = field_id.replace('_', ' ')
 
-        html += """<div class="column">"""
         html += f"""<fieldset id="{field_id}">\n"""
         html += f"""<label for="{field_id}">{button_name}</label><br>"""  # noqa: E501
 
@@ -270,7 +278,6 @@ def get_constellation_control_code(
             """
         html += """</fieldset>\n"""
         if i_column == 0:
-            html += """<input type="submit" value="Reconfigure constellation plot">"""  # noqa: E501
             html += html_utils.end_of_page()
 
         html += """</div>\n"""

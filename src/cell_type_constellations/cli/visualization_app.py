@@ -1,6 +1,11 @@
 import argparse
 import cherrypy
+import cherrypy.lib.static
+import io
 import pathlib
+import tempfile
+
+import cell_type_mapper.utils.utils as file_utils
 
 import cell_type_constellations
 import cell_type_constellations.rendering.rendering_api as rendering_api
@@ -33,6 +38,8 @@ def main():
 class Visualizer(object):
 
     def __init__(self):
+
+        self.download_dir = pathlib.Path(__file__).parent.resolve().absolute()
 
         file_path = pathlib.Path(
             cell_type_constellations.__file__)
@@ -97,9 +104,25 @@ class Visualizer(object):
                 scatter_plot_level=scatter_plot_level,
                 color_by=color_by,
                 connection_coords=connection_coords,
-                show_centroid_labels=show_centroid_labels)
+                show_centroid_labels=show_centroid_labels,
+                enable_download=True)
 
         return html
+
+    @cherrypy.expose
+    def download(self):
+
+        dst_file = io.BytesIO()
+        dst_file.write("CREATING THIS FILE\n".encode('utf=8'))
+        dst_file.write(file_utils.get_timestamp().encode('utf-8'))
+        dst_file.seek(0)
+
+        return cherrypy.lib.static.serve_fileobj(
+            fileobj=dst_file,
+            content_type='application/x-download',
+            disposition='attachment',
+            name='junk.txt',
+        )
 
 
 if __name__ == "__main__":
