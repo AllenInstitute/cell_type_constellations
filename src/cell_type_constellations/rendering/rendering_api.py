@@ -232,15 +232,21 @@ def get_constellation_control_code(
         n_columns=5)
 
     html += f"""<p>{taxonomy_name}</p>"""
+
+    if enable_download:
+        html += get_download_button(
+            centroid_level=centroid_level,
+            color_by=color_by,
+            connection_coords=connection_coords,
+            scatter_plot_level=scatter_plot_level,
+            show_centroid_labels=show_centroid_labels
+        )
+
     html += """<form action="constellation_plot" method="GET">\n"""
     html += f"""<input type="hidden" value="{taxonomy_name}" name="taxonomy_name">\n"""  # noqa: E501
     html += """<div class="row">"""
     html += """<input type="submit" value="Reconfigure constellation plot">"""  # noqa: E501
     html += """</div>"""
-    if enable_download:
-        html += """<div class="row">"""
-        html += "<a href='download'>Download image</a>"
-        html += """</div>"""
     for i_column, field_id in enumerate(
                                 ("centroid_level",
                                  "color_by",
@@ -359,6 +365,29 @@ def get_constellation_plot_config(
 
             result[taxonomy_name] = this
     return result
+
+
+def get_download_button(
+        centroid_level,
+        color_by,
+        connection_coords,
+        scatter_plot_level,
+        show_centroid_labels):
+
+    html = ""
+    html += """<form action="download_png" method="GET">\n"""
+    html += """<div class="row">"""
+    html += """<input type="submit" value="Donwnload png">"""  # noqa: E501
+    html += """</div>"""
+
+    html += f"""<input type="hidden" value="{centroid_level}" name="centroid_level">\n"""  # noqa: E501
+    html += f"""<input type="hidden" value="{color_by}" name="color_by">\n"""  # noqa: E501
+    html += f"""<input type="hidden" value="{connection_coords}" name="connection_coords">\n"""  # noqa: E501
+    html += f"""<input type="hidden" value="{scatter_plot_level}" name="scatter_plot_level">\n"""  # noqa: E501
+    html += f"""<input type="hidden" value="{show_centroid_labels}" name="show_centroid_labels">\n"""  # noqa: E501
+    html += """</form>"""
+
+    return html
 
 
 def get_taxonomy_name(hdf5_path):

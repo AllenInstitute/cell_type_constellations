@@ -110,7 +110,13 @@ class Visualizer(object):
         return html
 
     @cherrypy.expose
-    def download(self):
+    def download_png(
+            self,
+            centroid_level,
+            color_by,
+            connection_coords,
+            scatter_plot_level,
+            show_centroid_labels):
 
         dst_file = io.BytesIO()
         dst_file.write("CREATING THIS FILE\n".encode('utf=8'))
