@@ -96,6 +96,7 @@ def constellation_svg_from_hdf5(
 
         html += get_constellation_control_code(
             taxonomy_name=taxonomy_name,
+            hdf5_path=hdf5_path,
             centroid_level=centroid_level,
             color_by=color_by,
             show_centroid_labels=show_centroid_labels,
@@ -198,6 +199,7 @@ def load_constellation_data_from_hdf5(
 
 def get_constellation_control_code(
         taxonomy_name,
+        hdf5_path,
         centroid_level,
         show_centroid_labels,
         scatter_plot_level,
@@ -235,6 +237,7 @@ def get_constellation_control_code(
 
     if enable_download:
         html += get_download_button(
+            hdf5_path=hdf5_path,
             centroid_level=centroid_level,
             color_by=color_by,
             connection_coords=connection_coords,
@@ -368,11 +371,14 @@ def get_constellation_plot_config(
 
 
 def get_download_button(
+        hdf5_path,
         centroid_level,
         color_by,
         connection_coords,
         scatter_plot_level,
         show_centroid_labels):
+
+    hdf5_path = str(pathlib.Path(hdf5_path).resolve().absolute())
 
     html = ""
     html += """<form action="download_png" method="GET">\n"""
@@ -380,6 +386,7 @@ def get_download_button(
     html += """<input type="submit" value="Donwnload png">"""  # noqa: E501
     html += """</div>"""
 
+    html += f"""<input type="hidden" value="{hdf5_path}" name="hdf5_path">\n"""  # noqa: E501
     html += f"""<input type="hidden" value="{centroid_level}" name="centroid_level">\n"""  # noqa: E501
     html += f"""<input type="hidden" value="{color_by}" name="color_by">\n"""  # noqa: E501
     html += f"""<input type="hidden" value="{connection_coords}" name="connection_coords">\n"""  # noqa: E501

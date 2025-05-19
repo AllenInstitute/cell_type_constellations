@@ -2,6 +2,7 @@ import argparse
 import cherrypy
 import cherrypy.lib.static
 import io
+import matplotlib.figure
 import pathlib
 import tempfile
 
@@ -9,6 +10,7 @@ import cell_type_mapper.utils.utils as file_utils
 
 import cell_type_constellations
 import cell_type_constellations.rendering.rendering_api as rendering_api
+import cell_type_constellations.plotting.plotting_api as plotting_api
 
 
 def main():
@@ -39,16 +41,20 @@ class Visualizer(object):
 
     def __init__(self):
 
-        self.download_dir = pathlib.Path(__file__).parent.resolve().absolute()
-
         file_path = pathlib.Path(
             cell_type_constellations.__file__)
 
         self.data_dir = file_path.parent.parent.parent / 'app_data'
+        self.scratch_dir = file_path.parent.parent.parent / 'scratch'
 
         if not self.data_dir.is_dir():
             raise RuntimeError(
                 f"Data dir {self.data_dir} is not a dir"
+            )
+
+        if not self.scratch_dir.is_dir():
+            raise RuntimeError(
+                f"Scratch dir {self.scratch_dir} is not a dir"
             )
 
         self.constellation_plot_config = (
@@ -112,22 +118,53 @@ class Visualizer(object):
     @cherrypy.expose
     def download_png(
             self,
+            hdf5_path,
             centroid_level,
             color_by,
             connection_coords,
             scatter_plot_level,
             show_centroid_labels):
 
+        timestamp = file_utils.get_timestamp()
+        tmp_file_path = pathlib.Path(
+            file_utils.mkstemp_clean(
+                dir=self.scratch_dir,
+                prefix=f'constellation_plot_{timestamp}_',
+                suffix='.png'
+            )
+        )
+
+        fig = matplotlib.figure.Figure(figsize=(20, 20))
+        axis = fig.add_subplot(1, 1, 1)
+
+        plotting_api.plot_constellation_in_mpl(
+            hdf5_path=hdf5_path,
+            centroid_level=centroid_level,
+            hull_level=None,
+            color_by_level=color_by,
+            axis=axis,
+            connection_coords=connection_coords,
+            zorder_base=1,
+            fill_hulls=False,
+            show_labels=show_centroid_labels=='True'
+        )
+
+        fig.savefig(tmp_file_path)
+
         dst_file = io.BytesIO()
-        dst_file.write("CREATING THIS FILE\n".encode('utf=8'))
-        dst_file.write(file_utils.get_timestamp().encode('utf-8'))
+        with open(tmp_file_path, 'rb') as src:
+            dst_file.write(src.read())
         dst_file.seek(0)
+
+        tmp_file_path.unlink()
+
+        download_name = f"constellation_plot_{timestamp}.png"
 
         return cherrypy.lib.static.serve_fileobj(
             fileobj=dst_file,
             content_type='application/x-download',
             disposition='attachment',
-            name='junk.txt',
+            name=download_name,
         )
 
 
