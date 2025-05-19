@@ -30,6 +30,9 @@ def constellation_svg_from_hdf5(
             scatter_plots = True
             raw_scatter_plot_level_set = set(src['scatter_plots'].keys())
 
+    if 'None' in raw_scatter_plot_level_set:
+        raw_scatter_plot_level_set.remove('None')
+
     if scatter_plot_level is None or scatter_plot_level == 'NA':
         scatter_plots = False
 
