@@ -20,15 +20,17 @@ def constellation_svg_from_hdf5(
         connection_coords,
         color_by,
         render_metadata=True,
-        scatter_plot_level=None):
-
-
+        scatter_plot_level=None,
+        enable_download=False):
     scatter_plots = False
     scatter_plot_level_list = []
     with h5py.File(hdf5_path, 'r') as src:
         if 'scatter_plots' in src.keys():
             scatter_plots = True
             raw_scatter_plot_level_set = set(src['scatter_plots'].keys())
+
+    if 'None' in raw_scatter_plot_level_set:
+        raw_scatter_plot_level_set.remove('None')
 
     if scatter_plot_level is None or scatter_plot_level == 'NA':
         scatter_plots = False
@@ -94,6 +96,7 @@ def constellation_svg_from_hdf5(
 
         html += get_constellation_control_code(
             taxonomy_name=taxonomy_name,
+            hdf5_path=hdf5_path,
             centroid_level=centroid_level,
             color_by=color_by,
             show_centroid_labels=show_centroid_labels,
@@ -102,7 +105,8 @@ def constellation_svg_from_hdf5(
             discrete_field_list=discrete_field_list,
             continuous_field_list=continuous_field_list,
             scatter_plot_level_list=scatter_plot_level_list,
-            connection_coords_list=connection_coords_list)
+            connection_coords_list=connection_coords_list,
+            enable_download=enable_download)
 
     return html
 
@@ -195,6 +199,7 @@ def load_constellation_data_from_hdf5(
 
 def get_constellation_control_code(
         taxonomy_name,
+        hdf5_path,
         centroid_level,
         show_centroid_labels,
         scatter_plot_level,
@@ -203,7 +208,8 @@ def get_constellation_control_code(
         discrete_field_list,
         continuous_field_list,
         scatter_plot_level_list,
-        connection_coords_list):
+        connection_coords_list,
+        enable_download=False):
 
     if scatter_plot_level is None:
         scatter_plot_level = 'NA'
@@ -225,17 +231,32 @@ def get_constellation_control_code(
     html = ""
 
     html += html_utils.html_front_matter_n_columns(
-        n_columns=6)
+        n_columns=5)
 
     html += f"""<p>{taxonomy_name}</p>"""
+
+    if enable_download:
+        html += get_download_button(
+            hdf5_path=hdf5_path,
+            centroid_level=centroid_level,
+            color_by=color_by,
+            connection_coords=connection_coords,
+            scatter_plot_level=scatter_plot_level,
+            show_centroid_labels=show_centroid_labels
+        )
+
     html += """<form action="constellation_plot" method="GET">\n"""
     html += f"""<input type="hidden" value="{taxonomy_name}" name="taxonomy_name">\n"""  # noqa: E501
+    html += """<div class="row">"""
+    html += """<input type="submit" value="Reconfigure constellation plot">"""  # noqa: E501
+    html += """</div>"""
     for i_column, field_id in enumerate(
                                 ("centroid_level",
                                  "color_by",
                                  "connection_coords",
                                  "scatter_plot_level")):
 
+        html += """<div class="column">"""
         default_value = default_lookup[field_id]
 
         if field_id == 'scatter_plot_level':
@@ -245,29 +266,31 @@ def get_constellation_control_code(
         else:
             button_name = field_id.replace('_', ' ')
 
-        html += """<div class="column">"""
-        html += f"""<fieldset id="{field_id}">\n"""
-        html += f"""<label for="{field_id}">{button_name}</label><br>"""  # noqa: E501
-
         button_values = level_list_lookup[field_id]
 
         if field_id == 'scatter_plot_level':
             button_values.append('gray')
             button_values.append('NA')
 
-        for level in button_values:
-            level_name = level
-            html += f"""
-            <input type="radio" name="{field_id}" id="{level}" value="{level}" """  # noqa: E501
-            if level == default_value:
-                html += """checked="checked" """
-            html += ">"
-            html += f"""
-            <label for="{level}">{level_name}</label><br>
-            """
-        html += """</fieldset>\n"""
+        if len(button_values) == 1:
+            html += f"""<input type="hidden" value="{button_values[0]}" name="{field_id}">\n"""  # noqa: E501
+        else:
+
+            html += f"""<fieldset id="{field_id}">\n"""
+            html += f"""<label for="{field_id}">{button_name}</label><br>"""  # noqa: E501
+
+            for level in button_values:
+                level_name = level
+                html += f"""
+                <input type="radio" name="{field_id}" id="{level}" value="{level}" """  # noqa: E501
+                if level == default_value:
+                    html += """checked="checked" """
+                html += ">"
+                html += f"""
+                <label for="{level}">{level_name}</label><br>
+                """
+            html += """</fieldset>\n"""
         if i_column == 0:
-            html += """<input type="submit" value="Reconfigure constellation plot">"""  # noqa: E501
             html += html_utils.end_of_page()
 
         html += """</div>\n"""
@@ -349,6 +372,33 @@ def get_constellation_plot_config(
 
             result[taxonomy_name] = this
     return result
+
+
+def get_download_button(
+        hdf5_path,
+        centroid_level,
+        color_by,
+        connection_coords,
+        scatter_plot_level,
+        show_centroid_labels):
+
+    hdf5_path = str(pathlib.Path(hdf5_path).resolve().absolute())
+
+    html = ""
+    html += """<form action="download_png" method="GET">\n"""
+    html += """<div class="row">"""
+    html += """<input type="submit" value="Donwnload png">"""  # noqa: E501
+    html += """</div>"""
+
+    html += f"""<input type="hidden" value="{hdf5_path}" name="hdf5_path">\n"""  # noqa: E501
+    html += f"""<input type="hidden" value="{centroid_level}" name="centroid_level">\n"""  # noqa: E501
+    html += f"""<input type="hidden" value="{color_by}" name="color_by">\n"""  # noqa: E501
+    html += f"""<input type="hidden" value="{connection_coords}" name="connection_coords">\n"""  # noqa: E501
+    html += f"""<input type="hidden" value="{scatter_plot_level}" name="scatter_plot_level">\n"""  # noqa: E501
+    html += f"""<input type="hidden" value="{show_centroid_labels}" name="show_centroid_labels">\n"""  # noqa: E501
+    html += """</form>"""
+
+    return html
 
 
 def get_taxonomy_name(hdf5_path):

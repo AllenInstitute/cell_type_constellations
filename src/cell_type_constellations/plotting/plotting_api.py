@@ -1,3 +1,4 @@
+import h5py
 import matplotlib
 import numpy as np
 
@@ -10,14 +11,32 @@ def plot_constellation_in_mpl(
         centroid_level,
         hull_level,
         color_by_level,
-        axis,
         connection_coords='X_umap',
         zorder_base=1,
+        scatter_plot_level=None,
         fill_hulls=False,
-        show_labels=False):
+        show_labels=False,
+        axis=None,
+        dst_path=None):
 
+    output_ok = True
+    if axis is None:
+        if dst_path is None:
+            output_ok = False
+    if dst_path is None:
+        if axis is None:
+            output_ok = False
+    if dst_path is not None and axis is not None:
+        output_ok = False
+    if not output_ok:
+        raise RuntimeError(
+            "Must specify exactly one of axis and dst_path\n"
+            f"you gave axis: {axis}\n"
+            f"dst_path: {dst_path}\n"
+        )
     fontsize = 15
-    hull_zorder = zorder_base
+    umap_zorder = zorder_base
+    hull_zorder = zorder_base + 1
     connection_zorder = hull_zorder + 2
     centroid_zorder = connection_zorder + 2
 
@@ -28,6 +47,13 @@ def plot_constellation_in_mpl(
         connection_coords=connection_coords,
         convert_to_embedding=True
     )
+
+    if axis is None:
+        fov = constellation_data['fov']
+        fig = matplotlib.figure.Figure(
+            figsize=(20, 20*fov.height/fov.width)
+        )
+        axis = fig.add_subplot(1, 1, 1)
 
     color_map = constellation_data['discrete_color_map']
 
@@ -68,6 +94,58 @@ def plot_constellation_in_mpl(
                 fill=fill_hulls,
                 zorder=hull_zorder
             )
+
+    embedding_coords = None
+    if scatter_plot_level is not None:
+        with h5py.File(hdf5_path, 'r') as src:
+            embedding_coords = (
+                src['raw_scatter_plots/embedding_coords'][()]
+            )
+            if scatter_plot_level == 'gray':
+                color_array = np.ones(
+                    (embedding_coords.shape[0], 3),
+                    dtype=float
+                )
+                color_array *= (238.0/255.0)
+            else:
+                color_idx = (
+                    src[f'raw_scatter_plots/{scatter_plot_level}'][()]
+                )
+                color_lookup = src['raw_scatter_plots/color_lookup'][()]
+                color_array = np.array(
+                    [color_lookup[ii, :] for ii in color_idx]
+                )
+        rng = np.random.default_rng(22131)
+        shuffled_idx = np.arange(embedding_coords.shape[0])
+        rng.shuffle(shuffled_idx)
+        xx = embedding_coords[shuffled_idx, 0]
+        yy = embedding_coords[shuffled_idx, 1]
+        color_array = color_array[shuffled_idx, :]
+        axis.scatter(
+            xx,
+            yy,
+            c=color_array,
+            s=1,
+            zorder=umap_zorder
+        )
+
+    if dst_path is not None:
+        if embedding_coords is None:
+            with h5py.File(hdf5_path, 'r') as src:
+                embedding_coords = (
+                    src['raw_scatter_plots/embedding_coords'][()]
+                )
+        axis.set_xlim(
+            (embedding_coords[:, 0].min(),
+             embedding_coords[:, 0].max())
+        )
+        axis.set_ylim(
+            (embedding_coords[:, 1].min(),
+             embedding_coords[:, 1].max())
+        )
+        axis.axis('off')
+        fig.tight_layout()
+        fig.savefig(dst_path, bbox_inches=0)
 
 
 def plot_connection_in_mpl(connection, axis, zorder):

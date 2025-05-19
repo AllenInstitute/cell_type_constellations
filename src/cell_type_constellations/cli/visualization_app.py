@@ -1,9 +1,16 @@
 import argparse
 import cherrypy
+import cherrypy.lib.static
+import io
+import matplotlib.figure
 import pathlib
+import tempfile
+
+import cell_type_mapper.utils.utils as file_utils
 
 import cell_type_constellations
 import cell_type_constellations.rendering.rendering_api as rendering_api
+import cell_type_constellations.plotting.plotting_api as plotting_api
 
 
 def main():
@@ -38,10 +45,16 @@ class Visualizer(object):
             cell_type_constellations.__file__)
 
         self.data_dir = file_path.parent.parent.parent / 'app_data'
+        self.scratch_dir = file_path.parent.parent.parent / 'scratch'
 
         if not self.data_dir.is_dir():
             raise RuntimeError(
                 f"Data dir {self.data_dir} is not a dir"
+            )
+
+        if not self.scratch_dir.is_dir():
+            raise RuntimeError(
+                f"Scratch dir {self.scratch_dir} is not a dir"
             )
 
         self.constellation_plot_config = (
@@ -97,9 +110,64 @@ class Visualizer(object):
                 scatter_plot_level=scatter_plot_level,
                 color_by=color_by,
                 connection_coords=connection_coords,
-                show_centroid_labels=show_centroid_labels)
+                show_centroid_labels=show_centroid_labels,
+                enable_download=True)
 
         return html
+
+    @cherrypy.expose
+    def download_png(
+            self,
+            hdf5_path,
+            centroid_level,
+            color_by,
+            connection_coords,
+            scatter_plot_level,
+            show_centroid_labels):
+
+        if scatter_plot_level == 'NA':
+            scatter_plot_level = None
+
+        timestamp = file_utils.get_timestamp()
+        tmp_file_path = pathlib.Path(
+            file_utils.mkstemp_clean(
+                dir=self.scratch_dir,
+                prefix=f'constellation_plot_{timestamp}_',
+                suffix='.png'
+            )
+        )
+
+        try:
+            plotting_api.plot_constellation_in_mpl(
+                hdf5_path=hdf5_path,
+                dst_path=tmp_file_path,
+                centroid_level=centroid_level,
+                hull_level=None,
+                color_by_level=color_by,
+                connection_coords=connection_coords,
+                zorder_base=1,
+                fill_hulls=False,
+                show_labels=show_centroid_labels=='True',
+                scatter_plot_level=scatter_plot_level
+            )
+
+            dst_file = io.BytesIO()
+            with open(tmp_file_path, 'rb') as src:
+                dst_file.write(src.read())
+            dst_file.seek(0)
+
+        finally:
+            if tmp_file_path.exists():
+                tmp_file_path.unlink()
+
+        download_name = f"constellation_plot_{timestamp}.png"
+
+        return cherrypy.lib.static.serve_fileobj(
+            fileobj=dst_file,
+            content_type='application/x-download',
+            disposition='attachment',
+            name=download_name,
+        )
 
 
 if __name__ == "__main__":
