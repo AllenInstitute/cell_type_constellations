@@ -134,29 +134,27 @@ class Visualizer(object):
             )
         )
 
-        fig = matplotlib.figure.Figure(figsize=(20, 20))
-        axis = fig.add_subplot(1, 1, 1)
+        try:
+            plotting_api.plot_constellation_in_mpl(
+                hdf5_path=hdf5_path,
+                dst_path=tmp_file_path,
+                centroid_level=centroid_level,
+                hull_level=None,
+                color_by_level=color_by,
+                connection_coords=connection_coords,
+                zorder_base=1,
+                fill_hulls=False,
+                show_labels=show_centroid_labels=='True'
+            )
 
-        plotting_api.plot_constellation_in_mpl(
-            hdf5_path=hdf5_path,
-            centroid_level=centroid_level,
-            hull_level=None,
-            color_by_level=color_by,
-            axis=axis,
-            connection_coords=connection_coords,
-            zorder_base=1,
-            fill_hulls=False,
-            show_labels=show_centroid_labels=='True'
-        )
+            dst_file = io.BytesIO()
+            with open(tmp_file_path, 'rb') as src:
+                dst_file.write(src.read())
+            dst_file.seek(0)
 
-        fig.savefig(tmp_file_path)
-
-        dst_file = io.BytesIO()
-        with open(tmp_file_path, 'rb') as src:
-            dst_file.write(src.read())
-        dst_file.seek(0)
-
-        tmp_file_path.unlink()
+        finally:
+            if tmp_file_path.exists():
+                tmp_file_path.unlink()
 
         download_name = f"constellation_plot_{timestamp}.png"
 

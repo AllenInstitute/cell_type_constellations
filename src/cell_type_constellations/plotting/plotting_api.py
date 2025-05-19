@@ -10,12 +10,28 @@ def plot_constellation_in_mpl(
         centroid_level,
         hull_level,
         color_by_level,
-        axis,
         connection_coords='X_umap',
         zorder_base=1,
         fill_hulls=False,
-        show_labels=False):
+        show_labels=False,
+        axis=None,
+        dst_path=None):
 
+    output_ok = True
+    if axis is None:
+        if dst_path is None:
+            output_ok = False
+    if dst_path is None:
+        if axis is None:
+            output_ok = False
+    if dst_path is not None and axis is not None:
+        output_ok = False
+    if not output_ok:
+        raise RuntimeError(
+            "Must specify exactly one of axis and dst_path\n"
+            f"you gave axis: {axis}\n"
+            f"dst_path: {dst_path}\n"
+        )
     fontsize = 15
     hull_zorder = zorder_base
     connection_zorder = hull_zorder + 2
@@ -28,6 +44,13 @@ def plot_constellation_in_mpl(
         connection_coords=connection_coords,
         convert_to_embedding=True
     )
+
+    if axis is None:
+        fov = constellation_data['fov']
+        fig = matplotlib.figure.Figure(
+            figsize=(20, 20*fov.height/fov.width)
+        )
+        axis = fig.add_subplot(1, 1, 1)
 
     color_map = constellation_data['discrete_color_map']
 
@@ -68,6 +91,10 @@ def plot_constellation_in_mpl(
                 fill=fill_hulls,
                 zorder=hull_zorder
             )
+
+    if dst_path is not None:
+        axis.axis('off')
+        fig.savefig(dst_path, bbox_inches=0)
 
 
 def plot_connection_in_mpl(connection, axis, zorder):
