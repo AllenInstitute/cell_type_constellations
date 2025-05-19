@@ -40,6 +40,18 @@ def plot_constellation_in_mpl(
     connection_zorder = hull_zorder + 2
     centroid_zorder = connection_zorder + 2
 
+    with h5py.File(hdf5_path, 'r') as src:
+        embedding_coords = (
+            src['raw_scatter_plots/embedding_coords'][()]
+        )
+
+    xmin = embedding_coords[:, 0].min()
+    xmax = embedding_coords[:, 0].max()
+    ymin = embedding_coords[:, 1].min()
+    ymax = embedding_coords[:, 1].max()
+    width = xmax-xmin
+    height = ymax-ymin
+
     constellation_data = rendering_api.load_constellation_data_from_hdf5(
         hdf5_path=hdf5_path,
         centroid_level=centroid_level,
@@ -51,7 +63,7 @@ def plot_constellation_in_mpl(
     if axis is None:
         fov = constellation_data['fov']
         fig = matplotlib.figure.Figure(
-            figsize=(20, 20*fov.height/fov.width)
+            figsize=(20, 20*width/height)
         )
         axis = fig.add_subplot(1, 1, 1)
 
@@ -95,12 +107,8 @@ def plot_constellation_in_mpl(
                 zorder=hull_zorder
             )
 
-    embedding_coords = None
     if scatter_plot_level is not None:
         with h5py.File(hdf5_path, 'r') as src:
-            embedding_coords = (
-                src['raw_scatter_plots/embedding_coords'][()]
-            )
             if scatter_plot_level == 'gray':
                 color_array = np.ones(
                     (embedding_coords.shape[0], 3),
@@ -130,18 +138,13 @@ def plot_constellation_in_mpl(
         )
 
     if dst_path is not None:
-        if embedding_coords is None:
-            with h5py.File(hdf5_path, 'r') as src:
-                embedding_coords = (
-                    src['raw_scatter_plots/embedding_coords'][()]
-                )
         axis.set_xlim(
-            (embedding_coords[:, 0].min(),
-             embedding_coords[:, 0].max())
+            (xmin,
+             xmax)
         )
         axis.set_ylim(
-            (embedding_coords[:, 1].min(),
-             embedding_coords[:, 1].max())
+            (ymin,
+             ymax)
         )
         axis.axis('off')
         fig.tight_layout()

@@ -125,6 +125,8 @@ class Visualizer(object):
             scatter_plot_level,
             show_centroid_labels):
 
+        hdf5_path = pathlib.Path(hdf5_path)
+        hdf5_name = hdf5_path.name.replace('.h5', '')
         if scatter_plot_level == 'NA':
             scatter_plot_level = None
 
@@ -160,7 +162,7 @@ class Visualizer(object):
             if tmp_file_path.exists():
                 tmp_file_path.unlink()
 
-        download_name = f"constellation_plot_{timestamp}.png"
+        download_name = f"constellation_plot_{hdf5_name}_{timestamp}.png"
 
         return cherrypy.lib.static.serve_fileobj(
             fileobj=dst_file,
