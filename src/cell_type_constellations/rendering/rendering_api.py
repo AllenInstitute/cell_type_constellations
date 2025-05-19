@@ -266,26 +266,30 @@ def get_constellation_control_code(
         else:
             button_name = field_id.replace('_', ' ')
 
-        html += f"""<fieldset id="{field_id}">\n"""
-        html += f"""<label for="{field_id}">{button_name}</label><br>"""  # noqa: E501
-
         button_values = level_list_lookup[field_id]
 
         if field_id == 'scatter_plot_level':
             button_values.append('gray')
             button_values.append('NA')
 
-        for level in button_values:
-            level_name = level
-            html += f"""
-            <input type="radio" name="{field_id}" id="{level}" value="{level}" """  # noqa: E501
-            if level == default_value:
-                html += """checked="checked" """
-            html += ">"
-            html += f"""
-            <label for="{level}">{level_name}</label><br>
-            """
-        html += """</fieldset>\n"""
+        if len(button_values) == 1:
+            html += f"""<input type="hidden" value="{button_values[0]}" name="{field_id}">\n"""  # noqa: E501
+        else:
+
+            html += f"""<fieldset id="{field_id}">\n"""
+            html += f"""<label for="{field_id}">{button_name}</label><br>"""  # noqa: E501
+
+            for level in button_values:
+                level_name = level
+                html += f"""
+                <input type="radio" name="{field_id}" id="{level}" value="{level}" """  # noqa: E501
+                if level == default_value:
+                    html += """checked="checked" """
+                html += ">"
+                html += f"""
+                <label for="{level}">{level_name}</label><br>
+                """
+            html += """</fieldset>\n"""
         if i_column == 0:
             html += html_utils.end_of_page()
 
