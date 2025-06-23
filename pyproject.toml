@@ -18,6 +18,7 @@ dependencies = [
     "scipy",
     "pandas",
     "pytest",
+    "pyzmq==26.4.0",
     "cell_type_mapper @ git+https://github.com/AllenInstitute/cell_type_mapper@v1.4.0"
 ]
 requires-python = ">=3.8"
