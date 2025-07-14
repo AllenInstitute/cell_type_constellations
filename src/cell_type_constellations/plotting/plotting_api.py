@@ -18,7 +18,8 @@ def plot_constellation_in_mpl(
         fill_hulls=False,
         show_labels=False,
         axis=None,
-        dst_path=None):
+        dst_path=None,
+        unfaded=False):
     """
     color_by_level is either the identifier of the level we are
     coloring the centroids by, or an override color we are
@@ -140,10 +141,14 @@ def plot_constellation_in_mpl(
                     dtype=float
                 )
             else:
+                if unfaded:
+                    grp = 'raw_scatter_plots/unfaded'
+                else:
+                    grp = 'raw_scatter_plots'
                 color_idx = (
-                    src[f'raw_scatter_plots/{scatter_plot_level}'][()]
+                    src[f'{grp}/{scatter_plot_level}'][()]
                 )
-                color_lookup = src['raw_scatter_plots/color_lookup'][()]
+                color_lookup = src[f'{grp}/color_lookup'][()]
                 color_array = np.array(
                     [color_lookup[ii, :] for ii in color_idx]
                 )

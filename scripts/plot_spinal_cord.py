@@ -41,7 +41,8 @@ def main():
         axis=axis,
         dst_path=None,
         fill_hulls=False,
-        scatter_plot_level='Group'
+        scatter_plot_level='Group',
+        unfaded=True
     )
     axis.axis('off')
     fig.tight_layout()
