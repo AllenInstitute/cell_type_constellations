@@ -19,7 +19,8 @@ def plot_constellation_in_mpl(
         show_labels=False,
         axis=None,
         dst_path=None,
-        unfaded=False):
+        unfaded=False,
+        centroid_factor=1.0):
     """
     color_by_level is either the identifier of the level we are
     coloring the centroids by, or an override color we are
@@ -94,7 +95,7 @@ def plot_constellation_in_mpl(
 
         node = matplotlib.patches.Circle(
             (centroid.pixel_x, centroid.pixel_y),
-            radius=centroid.radius,
+            radius=centroid.radius*centroid_factor,
             facecolor=color,
             edgecolor='#bbbbbb',
             zorder=centroid_zorder

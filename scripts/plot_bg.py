@@ -21,7 +21,8 @@ def main():
         axis=axis,
         dst_path=None,
         fill_hulls=False,
-        scatter_plot_level=0.9
+        scatter_plot_level=0.9,
+        centroid_factor=0.5
     )
     axis.axis('off')
     fig.tight_layout()
