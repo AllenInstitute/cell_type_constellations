@@ -63,9 +63,7 @@ def main():
             embedding_path=embedding_path,
             hierarchy=hierarchy,
             dst_path=args.dst_path,
-            clobber=args.clobber,
-            max_radius=20,
-            min_radius=2
+            clobber=args.clobber
         )
 
 if __name__ == "__main__":
