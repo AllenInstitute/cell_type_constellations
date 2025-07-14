@@ -18,6 +18,11 @@ def plot_constellation_in_mpl(
         show_labels=False,
         axis=None,
         dst_path=None):
+    """
+    color_by_level is either the identifier of the level we are
+    coloring the centroids by, or an override color we are
+    coloring the centroids by.
+    """
 
     output_ok = True
     if axis is None:
@@ -70,8 +75,16 @@ def plot_constellation_in_mpl(
     color_map = constellation_data['discrete_color_map']
 
     for centroid in constellation_data['centroid_list']:
-        color_key = centroid.annotation['annotations'][color_by_level]
-        color = color_map[color_by_level][color_key]
+        if color_by_level.startswith('#'):
+            color = color_by_level
+        else:
+            if color_by_level not in centroid.annotation['annotations']:
+                raise ValueError(
+                    f"Unclear how to handle color_by_level {color_by_level}"
+                )
+            color_key = centroid.annotation['annotations'][color_by_level]
+            color = color_map[color_by_level][color_key]
+
         node = matplotlib.patches.Circle(
             (centroid.pixel_x, centroid.pixel_y),
             radius=centroid.radius,
