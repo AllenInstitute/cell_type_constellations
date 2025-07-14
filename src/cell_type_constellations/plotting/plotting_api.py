@@ -1,5 +1,6 @@
 import h5py
 import matplotlib
+import numbers
 import numpy as np
 
 import cell_type_constellations.rendering.rendering_api as rendering_api
@@ -22,6 +23,11 @@ def plot_constellation_in_mpl(
     color_by_level is either the identifier of the level we are
     coloring the centroids by, or an override color we are
     coloring the centroids by.
+
+    scatter_plot_level can be a level in the taxonomy,
+    'gray', or a float between 0 and 1 indicating how grayed
+    out to make the grayed out scatter plot points (smaller is
+    darker)
     """
 
     output_ok = True
@@ -128,6 +134,11 @@ def plot_constellation_in_mpl(
                     dtype=float
                 )
                 color_array *= (238.0/255.0)
+            elif isinstance(scatter_plot_level, numbers.Number):
+                color_array = scatter_plot_level * np.ones(
+                    (embedding_coords.shape[0], 3),
+                    dtype=float
+                )
             else:
                 color_idx = (
                     src[f'raw_scatter_plots/{scatter_plot_level}'][()]
