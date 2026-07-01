@@ -108,9 +108,17 @@ def get_connection_list(
         )
         connection_list.append(conn)
 
-    bezier_control_points = get_bezier_control_points(
-        centroid_list=centroid_list,
-        connection_list=connection_list)
+    if len(connection_list) == 0:
+        return connection_list
+
+    try:
+        bezier_control_points = get_bezier_control_points(
+            centroid_list=centroid_list,
+            connection_list=connection_list)
+    except:
+        print("centroid_list ",centroid_list)
+        print("connection_list ",connection_list)
+        raise
 
     for conn, bez in zip(connection_list, bezier_control_points):
         conn.thermal_control_point = bez
@@ -134,6 +142,10 @@ def write_pixel_connections_to_hdf5(
     Write a list of PixelSpaceConnections to a specific
     group in and HDF5 file
     """
+
+    if len(connection_list) == 0:
+        print(f'writing no connections for {group_path}')
+        return
 
     for conn in connection_list:
         if not isinstance(conn, PixelSpaceConnection):
