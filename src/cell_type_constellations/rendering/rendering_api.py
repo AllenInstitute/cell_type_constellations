@@ -154,9 +154,13 @@ def load_constellation_data_from_hdf5(
            src['discrete_color_map'][()].decode('utf-8')
         )
 
-        connection_coords_list = [
-            k for k in src[f'{discrete_field_list[0]}/connections'].keys()
-        ]
+        conn_key = f'{discrete_field_list[0]}/connections'
+        if conn_key in src.keys():
+            connection_coords_list = [
+                k for k in src[f'{discrete_field_list[0]}/connections'].keys()
+            ]
+        else:
+            connection_coords_list = []
 
         if 'hulls' in src.keys():
             hull_level_list = [
