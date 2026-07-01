@@ -10,7 +10,7 @@ def main():
     )
     assert hdf5_path.is_file()
 
-    fig = matplotlib.figure.Figure(figsize=(40, 40))
+    fig = matplotlib.figure.Figure(figsize=(20, 20))
     axis = fig.add_subplot(1,1,1)
     plotting_api.plot_constellation_in_mpl(
         hdf5_path=hdf5_path,
@@ -26,7 +26,8 @@ def main():
     axis.axis('off')
     fig.tight_layout()
     fig.savefig(
-        'figures/bg.constellation.color.png'
+        'figures/bg.constellation.color.transparent.medium.png',
+        transparent=True
     )
 
 
