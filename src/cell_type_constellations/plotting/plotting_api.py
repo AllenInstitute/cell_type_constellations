@@ -1,5 +1,6 @@
 import h5py
 import matplotlib
+import numbers
 import numpy as np
 
 import cell_type_constellations.rendering.rendering_api as rendering_api
@@ -17,7 +18,18 @@ def plot_constellation_in_mpl(
         fill_hulls=False,
         show_labels=False,
         axis=None,
-        dst_path=None):
+        dst_path=None,
+        unfaded=False):
+    """
+    color_by_level is either the identifier of the level we are
+    coloring the centroids by, or an override color we are
+    coloring the centroids by.
+
+    scatter_plot_level can be a level in the taxonomy,
+    'gray', or a float between 0 and 1 indicating how grayed
+    out to make the grayed out scatter plot points (smaller is
+    darker)
+    """
 
     output_ok = True
     if axis is None:
@@ -70,8 +82,16 @@ def plot_constellation_in_mpl(
     color_map = constellation_data['discrete_color_map']
 
     for centroid in constellation_data['centroid_list']:
-        color_key = centroid.annotation['annotations'][color_by_level]
-        color = color_map[color_by_level][color_key]
+        if color_by_level.startswith('#'):
+            color = color_by_level
+        else:
+            if color_by_level not in centroid.annotation['annotations']:
+                raise ValueError(
+                    f"Unclear how to handle color_by_level {color_by_level}"
+                )
+            color_key = centroid.annotation['annotations'][color_by_level]
+            color = color_map[color_by_level][color_key]
+
         node = matplotlib.patches.Circle(
             (centroid.pixel_x, centroid.pixel_y),
             radius=centroid.radius,
@@ -115,11 +135,20 @@ def plot_constellation_in_mpl(
                     dtype=float
                 )
                 color_array *= (238.0/255.0)
-            else:
-                color_idx = (
-                    src[f'raw_scatter_plots/{scatter_plot_level}'][()]
+            elif isinstance(scatter_plot_level, numbers.Number):
+                color_array = scatter_plot_level * np.ones(
+                    (embedding_coords.shape[0], 3),
+                    dtype=float
                 )
-                color_lookup = src['raw_scatter_plots/color_lookup'][()]
+            else:
+                if unfaded:
+                    grp = 'raw_scatter_plots/unfaded'
+                else:
+                    grp = 'raw_scatter_plots'
+                color_idx = (
+                    src[f'{grp}/{scatter_plot_level}'][()]
+                )
+                color_lookup = src[f'{grp}/color_lookup'][()]
                 color_array = np.array(
                     [color_lookup[ii, :] for ii in color_idx]
                 )

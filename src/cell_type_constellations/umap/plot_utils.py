@@ -141,7 +141,17 @@ def add_scatterplot_to_hdf5(
         cell_set=cell_set,
         discrete_color_map=discrete_color_map,
         color_by_list=color_by_list,
-        alpha=0.5)
+        alpha=0.5,
+        grp='raw_scatter_plots')
+
+    serialize_raw_color_lookup(
+        hdf5_path=hdf5_path,
+        cell_set=cell_set,
+        discrete_color_map=discrete_color_map,
+        color_by_list=color_by_list,
+        alpha=1.0,
+        grp='raw_scatter_plots/unfaded')
+
 
     print('SERIALIZED RAW SCATTER PLOTS')
 
@@ -202,7 +212,8 @@ def serialize_raw_color_lookup(
         cell_set,
         discrete_color_map,
         color_by_list,
-        alpha):
+        alpha,
+        grp='raw_scatter_plots'):
 
     print('SERIALIZING RAW SCATTER PLOTS')
     n_cells = cell_set.n_cells
@@ -231,11 +242,11 @@ def serialize_raw_color_lookup(
 
     with h5py.File(hdf5_path, 'a') as dst:
         dst.create_dataset(
-            'raw_scatter_plots/color_lookup',
+            f'{grp}/color_lookup',
             data=faded_color_lookup
         )
         for color_by in level_to_color_assignment:
             dst.create_dataset(
-                f'raw_scatter_plots/{color_by}',
+                f'{grp}/{color_by}',
                 data=level_to_color_assignment[color_by]
             )
