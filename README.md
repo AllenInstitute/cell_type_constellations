@@ -10,6 +10,11 @@ storing that data in an HDF5 file, and then using the
 [cherrypy library](https://cherrypy.dev/) to serve a small app on the user's
 local machine within which to visualize the constellation plot.
 
+This code is very much a prototype. Future support is not guaranteed.
+
+That being said, if you have any questions, reach out to
+Scott Daniel at scott.daniel@alleninstitute.org
+
 ## Installation
 
 This tool is written purely in python. The installation instructions below,
